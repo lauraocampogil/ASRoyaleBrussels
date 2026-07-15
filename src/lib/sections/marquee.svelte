@@ -1,10 +1,31 @@
 <script lang="ts">
-	let props: any = $props();
+	let { items = [] }: any = $props();
+	const loop = [...items, ...items];
 </script>
 
-<section class="grid-section sm-grid-section py-10 border-b border-dark-accent/20">
-	<div class="col-span-8">
-		<p class="text-tag uppercase text-primary">Bloc : Marquee</p>
-		<pre class="text-p-small whitespace-pre-wrap">{JSON.stringify(props, null, 2)}</pre>
+<section class="relative overflow-hidden bg-secondary py-6">
+	<div class="marquee-left flex w-max items-center gap-6 whitespace-nowrap">
+		{#each loop as item}
+			<span class="text-tag font-jakarta uppercase text-dark">{item}</span>
+			<span class="text-dark">—</span>
+		{/each}
 	</div>
 </section>
+
+<style>
+	.marquee-left {
+		animation: marquee-left 25s linear infinite;
+	}
+	.marquee-left:hover {
+		animation-play-state: paused;
+	}
+
+	@keyframes marquee-left {
+		from {
+			transform: translateX(0);
+		}
+		to {
+			transform: translateX(-50%);
+		}
+	}
+</style>
