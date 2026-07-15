@@ -1,0 +1,10 @@
+export { default as HeaderBlock } from './header.svelte';
+export { default as HeroBlock } from './hero.svelte';
+export { default as MarqueeBlock } from './marquee.svelte';
+export { default as MethodBlock } from './method.svelte';
+export { default as ParcoursBlock } from './parcours.svelte';
+export { default as PlayersBlock } from './players.svelte';
+export { default as StaffBlock } from './staff.svelte';
+export { default as NextEventBlock } from './next-event.svelte';
+export { default as RegistrationBlock } from './registration.svelte';
+export { default as FooterBlock } from './footer.svelte';
