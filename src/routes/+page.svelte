@@ -1,2 +1,10 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script lang="ts">
+	import Builder from '$lib/sections/builder.svelte';
+	let { data } = $props();
+</script>
+
+<svelte:head>
+	<title>AS Royale Brussels | Académie de football à Bruxelles</title>
+</svelte:head>
+
+<Builder blocks={data.blocks} />
