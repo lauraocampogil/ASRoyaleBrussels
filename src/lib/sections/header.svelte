@@ -1,15 +1,18 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
+	import { heroPinned } from '$lib/stores/heroPinned';
 
 	let { logo, cta_label, cta_href, nav_links = [] }: any = $props();
 
 	let visible = $state(true);
 	let lastScrollY = $state(0);
 	let menuOpen = $state(false);
+	let insideHero = $state(false);
+
+	heroPinned.subscribe((v) => (insideHero = v));
 
 	function handleScroll() {
 		const currentScrollY = window.scrollY;
-
 		if (currentScrollY < 50) {
 			visible = true;
 		} else if (currentScrollY > lastScrollY) {
@@ -18,7 +21,6 @@
 		} else {
 			visible = true;
 		}
-
 		lastScrollY = currentScrollY;
 	}
 </script>
@@ -26,7 +28,8 @@
 <svelte:window onscroll={handleScroll} />
 
 <header
-	class="fixed top-0 left-0 z-50 w-full px-4 pt-4 transition-transform duration-300 {visible
+	class="fixed top-0 left-0 z-50 w-full px-4 pt-4 transition-transform duration-300 {visible &&
+	!insideHero
 		? 'translate-y-0'
 		: '-translate-y-full'}"
 >
@@ -87,5 +90,3 @@
 		{/if}
 	</div>
 </header>
-
-<div class="h-22"></div>
