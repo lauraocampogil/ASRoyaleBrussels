@@ -29,7 +29,7 @@ export async function load() {
 
 	const blocks = [
 		{ type: 'HeaderBlock', props: { ...header, logo: assetUrl(header.logo) } },
-		{ type: 'HeroBlock', props: { ...hero, background: assetUrl(hero.background) } },
+		{ type: 'HeroBlock', props: { ...hero, background: assetUrl(hero.video_background) } },
 		{ type: 'MarqueeBlock', props: marquee },
 		{ type: 'MethodBlock', props: { ...method, image: assetUrl(method.image) } },
 		{ type: 'ParcoursBlock', props: { ...parcours, steps: parcoursSteps } },
