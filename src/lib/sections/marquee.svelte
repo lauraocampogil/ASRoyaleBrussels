@@ -1,6 +1,7 @@
 <script lang="ts">
 	let { items = [] }: any = $props();
-	const loop = [...items, ...items];
+	const singleSet = Array(4).fill(items).flat();
+	const loop = [...singleSet, ...singleSet];
 </script>
 
 <section class="relative overflow-hidden bg-secondary py-6">
@@ -14,7 +15,7 @@
 
 <style>
 	.marquee-left {
-		animation: marquee-left 25s linear infinite;
+		animation: marquee-left 55s linear infinite;
 	}
 	.marquee-left:hover {
 		animation-play-state: paused;
