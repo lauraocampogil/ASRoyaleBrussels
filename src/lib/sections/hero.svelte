@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { heroPinned } from '$lib/stores/heroPinned';
+	import { Button, Tagline } from '$lib/components';
 
 	let {
 		tagline,
@@ -82,7 +83,7 @@
 			class="col-start-3 col-span-4 flex flex-col items-center gap-y-6 text-center text-white"
 		>
 			{#if tagline}
-				<p class="text-tag uppercase tracking-wide text-secondary">{tagline}</p>
+				<Tagline text={tagline} />
 			{/if}
 			<h1 class="text-title-6xl font-clash">{@html title}</h1>
 			{#if subtitle}
@@ -90,17 +91,10 @@
 			{/if}
 			<div class="flex gap-4">
 				{#if cta_primary_label}
-					<a href={cta_primary_href} class="text-button rounded bg-secondary px-6 py-3 text-dark">
-						{cta_primary_label}
-					</a>
+					<Button href={cta_primary_href} label={cta_primary_label} variant="primary" />
 				{/if}
 				{#if cta_secondary_label}
-					<a
-						href={cta_secondary_href}
-						class="text-button rounded border border-white px-6 py-3 text-white"
-					>
-						{cta_secondary_label}
-					</a>
+					<Button href={cta_secondary_href} label={cta_secondary_label} variant="outline-white" />
 				{/if}
 			</div>
 		</div>
