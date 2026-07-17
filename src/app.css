@@ -61,6 +61,8 @@
 
 html {
 	font-size: 16px;
+	scroll-behavior: smooth;
+	scroll-padding-top: 90px; /* ajuste selon la hauteur réelle de ton header */
 }
 
 body {
