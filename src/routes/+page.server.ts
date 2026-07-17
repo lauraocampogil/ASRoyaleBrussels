@@ -31,7 +31,14 @@ export async function load() {
 		{ type: 'HeaderBlock', props: { ...header, logo: assetUrl(header.logo) } },
 		{ type: 'HeroBlock', props: { ...hero, background: assetUrl(hero.video_background) } },
 		{ type: 'MarqueeBlock', props: marquee },
-		{ type: 'MethodBlock', props: { ...method, image: assetUrl(method.image) } },
+		{
+			type: 'MethodBlock',
+			props: {
+				...method,
+				image: assetUrl(method.image),
+				image_subject: assetUrl(method.image_subject)
+			}
+		},
 		{ type: 'ParcoursBlock', props: { ...parcours, steps: parcoursSteps } },
 		{ type: 'PlayersBlock', props: { players } },
 		{
