@@ -9,7 +9,8 @@ export async function load() {
 		parcours,
 		parcoursSteps,
 		players,
-		staff,
+		staffSection,
+		staffMembers,
 		nextEvent,
 		registration,
 		footer
@@ -21,7 +22,8 @@ export async function load() {
 		directus.request(readSingleton('Parcours')),
 		directus.request(readItems('ParcoursSteps', { sort: ['order'] })),
 		directus.request(readItems('Players')),
-		directus.request(readItems('Staff')),
+		directus.request(readSingleton('Staff')),
+		directus.request(readItems('StaffMembers')),
 		directus.request(readSingleton('NextEvent')),
 		directus.request(readSingleton('Registration')),
 		directus.request(readSingleton('Footer'))
@@ -43,7 +45,17 @@ export async function load() {
 		{ type: 'PlayersBlock', props: { players } },
 		{
 			type: 'StaffBlock',
-			props: { staff: staff.map((s: any) => ({ ...s, Photo: assetUrl(s.Photo) })) }
+			props: {
+				eyebrow: staffSection.eyebrow,
+				title: staffSection.title,
+				description: staffSection.description,
+				staff: staffMembers.map((s: any) => ({
+					name: s.name,
+					role: s.role,
+					image: assetUrl(s.photo),
+					image_subject: assetUrl(s.image_subject)
+				}))
+			}
 		},
 		{ type: 'NextEventBlock', props: { ...nextEvent, image: assetUrl(nextEvent.image) } },
 		{ type: 'RegistrationBlock', props: registration },
