@@ -42,6 +42,7 @@
 </script>
 
 <section
+	id="staff"
 	bind:this={sectionEl}
 	class="grid-section sm-grid-section bg-background px-5 py-16 sm:px-8 md:px-10 lg:px-12 xl:py-24 3xl:container 3xl:mx-auto"
 >
