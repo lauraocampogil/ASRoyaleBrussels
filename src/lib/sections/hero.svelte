@@ -1,7 +1,8 @@
+<!-- Hero.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { heroPinned } from '$lib/stores/heroPinned';
-	import { Button, Tagline } from '$lib/components';
+	import { Button, Tagline, DotGrid } from '$lib/components';
 
 	let {
 		tagline,
@@ -17,7 +18,7 @@
 	let sectionEl: HTMLElement;
 	let videoWrapEl: HTMLElement;
 	let contentEl: HTMLElement;
-	let videoEl: HTMLVideoElement;
+	let videoEl: HTMLVideoElement | undefined = $state();
 
 	onMount(() => {
 		let ctx: any;
@@ -74,9 +75,15 @@
 	});
 </script>
 
-<section bind:this={sectionEl} class="relative h-screen w-full overflow-hidden bg-primary">
+<section
+	bind:this={sectionEl}
+	role="presentation"
+	class="relative h-screen w-full overflow-hidden bg-primary"
+>
+	<DotGrid fadeBottom />
+
 	<div
-		class="grid-section sm-grid-section relative h-full px-5 pt-20 pb-12 sm:px-8 sm:pt-24 md:px-10 lg:px-12 xl:pb-20 xl:pt-28 3xl:container 3xl:mx-auto"
+		class="grid-section sm-grid-section content-center relative h-full px-5 pb-[20vh] sm:px-8 md:px-10 lg:px-12 3xl:container 3xl:mx-auto"
 	>
 		<div
 			bind:this={contentEl}
@@ -85,10 +92,7 @@
 			{#if tagline}
 				<Tagline text={tagline} />
 			{/if}
-			<h1 class="text-title-6xl font-clash">{@html title}</h1>
-			{#if subtitle}
-				<p class="text-subtitle font-jakarta max-w-2xl text-white/80">{subtitle}</p>
-			{/if}
+			<h1 class="text-title-6xl uppercase font-clash">{@html title}</h1>
 			<div class="flex gap-4">
 				{#if cta_primary_label}
 					<Button href={cta_primary_href} label={cta_primary_label} variant="primary" />
@@ -102,7 +106,7 @@
 
 	<div
 		bind:this={videoWrapEl}
-		class="absolute bottom-0 left-1/2 h-[42vh] w-[60vw] overflow-hidden rounded-3xl bg-dark"
+		class="absolute bottom-0 left-1/2 h-[32vh] w-[75vw] overflow-hidden rounded-t-[10px] bg-dark"
 	>
 		{#if background}
 			<video
