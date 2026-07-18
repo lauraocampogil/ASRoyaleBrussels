@@ -8,6 +8,7 @@ export async function load() {
 		method,
 		parcours,
 		parcoursSteps,
+		playersSection,
 		players,
 		staffSection,
 		staffMembers,
@@ -21,6 +22,7 @@ export async function load() {
 		directus.request(readSingleton('Method')),
 		directus.request(readSingleton('Parcours')),
 		directus.request(readItems('ParcoursSteps', { sort: ['order'] })),
+		directus.request(readSingleton('PlayersSection')),
 		directus.request(readItems('Players')),
 		directus.request(readSingleton('Staff')),
 		directus.request(readItems('StaffMembers')),
@@ -42,7 +44,26 @@ export async function load() {
 			}
 		},
 		{ type: 'ParcoursBlock', props: { ...parcours, steps: parcoursSteps } },
-		{ type: 'PlayersBlock', props: { players } },
+		{
+			type: 'PlayersBlock',
+			props: {
+				eyebrow: playersSection.eyebrow,
+				title: playersSection.title,
+				description: playersSection.description,
+				players: players.map((p: any) => ({
+					name: p.name,
+					position: p.position,
+					country: p.country,
+					country_code: p.country_code,
+					club: p.club,
+					instagram: p.instagram,
+					email: p.email,
+					photo: assetUrl(p.photo),
+					highlight_video: assetUrl(p.highlight_video),
+					gender: p.gender
+				}))
+			}
+		},
 		{
 			type: 'StaffBlock',
 			props: {
