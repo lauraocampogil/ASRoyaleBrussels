@@ -27,10 +27,10 @@
 </script>
 
 <footer
-	class="relative w-full overflow-hidden bg-primary px-5 pt-24 pb-40 sm:px-8 md:px-10 lg:px-12 xl:pt-32 xl:pb-56"
+	class="grid-section sm-grid-section relative w-full overflow-hidden bg-primary px-5 pt-24 pb-40 sm:px-8 md:px-10 lg:px-12 xl:pt-32 xl:pb-56"
 >
 	<div
-		class="relative z-10 flex flex-col justify-between gap-10 sm:flex-row sm:items-start 3xl:container 3xl:mx-auto"
+		class="relative z-10 col-span-8 flex flex-col justify-between gap-10 sm:flex-row sm:items-start"
 	>
 		<div class="flex flex-col gap-4">
 			<h2 class="text-title-2xl font-clash text-white">Contacts</h2>
@@ -57,7 +57,7 @@
 					Unix
 				</a>
 			</span>
-			<nav class="mt-3 flex flex-wrap gap-6">
+			<nav class="mt-3 flex flex-wrap justify-end gap-6">
 				{#each social_links as link}
 					<a
 						href={link.href}
@@ -73,13 +73,11 @@
 		</div>
 	</div>
 
-	<div
-		class="relative z-10 mt-16 flex flex-wrap justify-center gap-4 sm:mt-20 sm:justify-end 3xl:container 3xl:mx-auto"
-	>
+	<div class="relative z-10 col-span-8 mt-16 flex flex-wrap justify-end gap-4 sm:mt-20">
 		{#each legal_links as link, i}
 			<a
 				href={link.href}
-				class="font-jakarta text-xs text-white/40 transition-colors hover:text-white/70"
+				class="font-jakarta text-xs whitespace-nowrap text-white/40 transition-colors hover:text-white/70"
 			>
 				{link.label}
 			</a>
