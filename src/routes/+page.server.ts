@@ -12,7 +12,7 @@ export async function load() {
 		players,
 		staffSection,
 		staffMembers,
-		nextEvent,
+		CTA,
 		registration,
 		footer
 	] = await Promise.all([
@@ -26,7 +26,7 @@ export async function load() {
 		directus.request(readItems('Players')),
 		directus.request(readSingleton('Staff')),
 		directus.request(readItems('StaffMembers')),
-		directus.request(readSingleton('NextEvent')),
+		directus.request(readSingleton('CTA')),
 		directus.request(readSingleton('Registration')),
 		directus.request(readSingleton('Footer'))
 	]);
@@ -85,8 +85,14 @@ export async function load() {
 				}))
 			}
 		},
-		{ type: 'NextEventBlock', props: { ...nextEvent, image: assetUrl(nextEvent.image) } },
-		{ type: 'RegistrationBlock', props: registration },
+		{
+			type: 'CTABlock',
+			props: {
+				title: CTA.title,
+				cta_label: CTA.cta_label,
+				cta_href: CTA.cta_href
+			}
+		},
 		{ type: 'FooterBlock', props: { ...footer, logo: assetUrl(footer.logo) } }
 	];
 
