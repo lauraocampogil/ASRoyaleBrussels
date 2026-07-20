@@ -51,16 +51,23 @@ export async function load() {
 				title: playersSection.title,
 				description: playersSection.description,
 				players: players.map((p: any) => ({
+					id: p.id,
 					name: p.name,
 					position: p.position,
 					country: p.country,
 					country_code: p.country_code,
 					club: p.club,
+					club_logo: assetUrl(p.club_logo),
 					instagram: p.instagram,
 					email: p.email,
 					photo: assetUrl(p.photo),
 					highlight_video: assetUrl(p.highlight_video),
-					gender: p.gender
+					gender: p.gender,
+					goals: p.goals,
+					assists: p.assists,
+					games: p.games,
+					foot: p.foot,
+					height: p.height
 				}))
 			}
 		},
