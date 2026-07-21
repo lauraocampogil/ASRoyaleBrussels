@@ -117,6 +117,8 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <section
+	data-header-theme="light"
+	id="players"
 	class="grid-section sm-grid-section bg-background px-5 py-16 sm:px-8 md:px-10 lg:px-12 xl:py-24 3xl:container 3xl:mx-auto"
 >
 	<div class="col-span-8 mb-10 flex flex-col gap-y-4 md:col-span-5">
