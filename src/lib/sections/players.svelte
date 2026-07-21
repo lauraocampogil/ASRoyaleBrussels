@@ -160,35 +160,40 @@
 		>
 			{#if selected}
 				<div class="flip-card h-full w-full" class:flipped>
-					<div class="flip-card-inner h-full w-full rounded-[10px]">
+					<div class="flip-card-inner h-full w-full rounded-lg">
 						<div class="flip-card-face flip-card-front">
 							<img src={selected.photo} alt={selected.name} class="h-full w-full object-cover" />
 						</div>
 						<div class="flip-card-face flip-card-back flex flex-col justify-between bg-primary p-6">
-							<div class="grid grid-cols-2 gap-5">
-								<div>
-									<span class="block text-xs text-white/50 uppercase">Buts</span>
-									<span class="text-title-md font-clash text-white">{selected.goals ?? '-'}</span>
-								</div>
-								<div>
-									<span class="block text-xs text-white/50 uppercase">Passes D.</span>
-									<span class="text-title-md font-clash text-white">{selected.assists ?? '-'}</span>
-								</div>
-								<div>
-									<span class="block text-xs text-white/50 uppercase">Matchs</span>
-									<span class="text-title-md font-clash text-white">{selected.games ?? '-'}</span>
-								</div>
-								<div>
-									<span class="block text-xs text-white/50 uppercase">Pied fort</span>
-									<span class="text-title-md font-clash text-white capitalize"
-										>{selected.foot ?? '-'}</span
-									>
-								</div>
-								<div>
-									<span class="block text-xs text-white/50 uppercase">Taille</span>
-									<span class="text-title-md font-clash text-white"
-										>{selected.height ? `${selected.height} cm` : '-'}</span
-									>
+							<div>
+								<h3 class="text-title-md font-clash mb-4 text-white uppercase">{selected.name}</h3>
+								<div class="grid grid-cols-2 gap-5">
+									<div>
+										<span class="block text-xs text-white/50 uppercase">Buts</span>
+										<span class="text-title-md font-clash text-white">{selected.goals ?? '-'}</span>
+									</div>
+									<div>
+										<span class="block text-xs text-white/50 uppercase">Passes D.</span>
+										<span class="text-title-md font-clash text-white"
+											>{selected.assists ?? '-'}</span
+										>
+									</div>
+									<div>
+										<span class="block text-xs text-white/50 uppercase">Matchs</span>
+										<span class="text-title-md font-clash text-white">{selected.games ?? '-'}</span>
+									</div>
+									<div>
+										<span class="block text-xs text-white/50 uppercase">Pied fort</span>
+										<span class="text-title-md font-clash text-white capitalize"
+											>{selected.foot ?? '-'}</span
+										>
+									</div>
+									<div>
+										<span class="block text-xs text-white/50 uppercase">Taille</span>
+										<span class="text-title-md font-clash text-white"
+											>{selected.height ? `${selected.height} cm` : '-'}</span
+										>
+									</div>
 								</div>
 							</div>
 
