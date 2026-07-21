@@ -120,6 +120,7 @@
 
 <section
 	bind:this={sectionEl}
+	aria-label="Section d'appel à l'action"
 	onmousemove={handleMouseMove}
 	onmouseleave={handleMouseLeave}
 	class="grid-section sm-grid-section relative overflow-hidden px-5 py-24 sm:px-8 md:px-10 lg:px-12 xl:py-40 3xl:container 3xl:mx-auto"
@@ -134,7 +135,7 @@
 					src={img}
 					alt=""
 					style="top: {pos.y}px; left: {pos.x}px; --rotate: {pos.rotate}deg;"
-					class="absolute h-44 w-44 rotate-[var(--rotate)] scale-75 rounded-[12px] object-cover opacity-0 shadow-xl transition-all duration-500 ease-out {activeIndex ===
+					class="absolute h-44 w-44 rotate-(--rotate) scale-75 rounded-lg object-cover opacity-0 shadow-xl transition-all duration-500 ease-out {activeIndex ===
 					i
 						? 'scale-100 opacity-100'
 						: ''} {pos.aboveText ? 'z-40' : activeIndex === i ? 'z-20' : 'z-0'}"
