@@ -95,12 +95,10 @@ body {
 	--text-title-6xl: 3.815rem;
 	--text-title-6xl--line-height: 1.15;
 	--text-title-6xl--font-weight: 700;
-	--text-title-6xl--letter-spacing: -0.02em;
 
 	/* H2 */
 	--text-title-2xl: 2.25rem;
 	--text-title-2xl--font-weight: 600;
-	--text-title-2xl--letter-spacing: -0.02em;
 
 	/* H3 */
 	--text-title-xl: 2.44rem;
