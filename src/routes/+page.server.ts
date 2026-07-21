@@ -26,10 +26,16 @@ export async function load() {
 		directus.request(readItems('Players')),
 		directus.request(readSingleton('Staff')),
 		directus.request(readItems('StaffMembers')),
-		directus.request(readSingleton('CTA')),
+		directus.request(
+			readSingleton('CTA', {
+				fields: ['*', 'hover_images.directus_files_id']
+			})
+		),
 		directus.request(readSingleton('Registration')),
 		directus.request(readSingleton('Footer'))
 	]);
+
+	console.log('CTA:', JSON.stringify(CTA, null, 2));
 
 	const blocks = [
 		{ type: 'HeaderBlock', props: { ...header, logo: assetUrl(header.logo) } },
@@ -90,7 +96,9 @@ export async function load() {
 			props: {
 				title: CTA.title,
 				cta_label: CTA.cta_label,
-				cta_href: CTA.cta_href
+				cta_href: CTA.cta_href,
+				hover_images: (CTA.hover_images ?? []).map((f: any) => assetUrl(f.directus_files_id)),
+				debug_raw: CTA.hover_images
 			}
 		},
 		{ type: 'FooterBlock', props: { ...footer, logo: assetUrl(footer.logo) } }
