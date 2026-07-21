@@ -39,6 +39,7 @@
 
 <section
 	id="parcours"
+	data-header-theme="primary"
 	bind:this={sectionEl}
 	class="grid-section sm-grid-section bg-primary px-5 py-16 sm:px-8 md:px-10 lg:px-12 xl:py-24 3xl:container 3xl:mx-auto"
 >
@@ -63,7 +64,7 @@
 					<span class="text-title-md font-clash w-16 shrink-0 text-secondary">
 						{String(step.order ?? i + 1).padStart(2, '0')}
 					</span>
-					<span class="text-title-md font-clash flex-1 text-white">{step.title}</span>
+					<span class="text-title-md font-jakarta flex-1 text-white">{step.title}</span>
 					<span class="relative h-11 w-11 shrink-0 overflow-hidden">
 						<span
 							class="absolute inset-0 transition-transform duration-300"

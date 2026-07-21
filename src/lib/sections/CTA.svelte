@@ -120,6 +120,7 @@
 
 <section
 	bind:this={sectionEl}
+	data-header-theme="light"
 	aria-label="Section d'appel à l'action"
 	onmousemove={handleMouseMove}
 	onmouseleave={handleMouseLeave}

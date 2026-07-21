@@ -7,7 +7,6 @@
 	let {
 		tagline,
 		title,
-		subtitle,
 		cta_primary_label,
 		cta_primary_href,
 		cta_secondary_label,
@@ -76,8 +75,10 @@
 </script>
 
 <section
+	id="home"
 	bind:this={sectionEl}
 	role="presentation"
+	data-header-theme="primary"
 	class="relative h-screen w-full overflow-hidden bg-primary"
 >
 	<DotGrid fadeBottom />
