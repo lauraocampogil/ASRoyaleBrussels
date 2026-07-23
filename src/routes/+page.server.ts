@@ -13,7 +13,6 @@ export async function load() {
 		staffSection,
 		staffMembers,
 		CTA,
-		registration,
 		footer
 	] = await Promise.all([
 		directus.request(readSingleton('Header')),
@@ -31,7 +30,6 @@ export async function load() {
 				fields: ['*', 'hover_images.directus_files_id']
 			})
 		),
-		directus.request(readSingleton('Registration')),
 		directus.request(readSingleton('Footer'))
 	]);
 
