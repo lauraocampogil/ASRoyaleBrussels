@@ -6,5 +6,4 @@ export { default as ParcoursBlock } from './parcours.svelte';
 export { default as PlayersBlock } from './players.svelte';
 export { default as StaffBlock } from './staff.svelte';
 export { default as CTABlock } from './CTA.svelte';
-export { default as RegistrationBlock } from './registration.svelte';
 export { default as FooterBlock } from './footer.svelte';
