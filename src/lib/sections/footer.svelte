@@ -30,23 +30,9 @@
 	data-header-theme="primary"
 	class="grid-section sm-grid-section relative w-full overflow-hidden bg-primary px-5 pt-24 pb-40 sm:px-8 md:px-10 lg:px-12 xl:pt-32 xl:pb-56"
 >
-	<div
-		class="relative z-10 col-span-8 flex flex-col justify-between gap-10 sm:flex-row sm:items-start"
-	>
-		<div class="flex flex-col gap-4">
+	<div class="relative z-10 col-span-8 flex flex-col gap-6">
+		<div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
 			<h2 class="text-title-2xl font-clash text-white">Contacts</h2>
-			{#if email}
-				<a
-					href="mailto:{email}"
-					class="font-jakarta inline-flex items-center gap-1 text-secondary underline underline-offset-4 transition-opacity hover:opacity-80"
-				>
-					{email}
-					<span aria-hidden="true">↗</span>
-				</a>
-			{/if}
-		</div>
-
-		<div class="flex flex-col items-start gap-3 sm:items-end">
 			<span class="font-jakarta text-sm whitespace-nowrap text-white/50">
 				© {new Date().getFullYear()} Tous droits réservés · {credit_label}
 				<a
@@ -58,7 +44,20 @@
 					Unix
 				</a>
 			</span>
-			<nav class="mt-3 flex flex-wrap justify-end gap-6">
+		</div>
+
+		<div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+			{#if email}
+				<a
+					href="mailto:{email}"
+					class="font-jakarta inline-flex items-center gap-1 text-secondary underline underline-offset-4 transition-opacity hover:opacity-80"
+				>
+					{email}
+					<span aria-hidden="true">↗</span>
+				</a>
+			{/if}
+
+			<nav class="flex flex-wrap gap-6">
 				{#each social_links as link}
 					<a
 						href={link.href}
