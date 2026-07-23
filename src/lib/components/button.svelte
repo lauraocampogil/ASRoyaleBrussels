@@ -2,11 +2,17 @@
 	let {
 		href,
 		label,
-		variant = 'primary'
+		variant = 'primary',
+		type = 'button',
+		disabled = false,
+		onclick
 	}: {
 		href?: string;
 		label: string;
 		variant?: 'primary' | 'outline-white' | 'outline-primary';
+		type?: 'button' | 'submit';
+		disabled?: boolean;
+		onclick?: (e: MouseEvent) => void;
 	} = $props();
 
 	const variants: Record<string, string> = {
@@ -14,14 +20,12 @@
 		'outline-white': 'border border-white text-white hover:bg-white hover:text-dark',
 		'outline-primary': 'border border-primary text-primary hover:bg-primary hover:text-white'
 	};
+
+	const baseClass =
+		'group text-button inline-flex items-center justify-center overflow-hidden rounded px-6 py-3 transition-colors disabled:opacity-50';
 </script>
 
-<a
-	{href}
-	class="group text-button inline-flex items-center overflow-hidden rounded px-6 py-3 transition-colors {variants[
-		variant
-	]}"
->
+{#snippet letters()}
 	{#each label.split('') as char, i}
 		<span class="relative inline-block h-[1em] overflow-hidden align-top leading-none">
 			<span
@@ -35,4 +39,14 @@
 			</span>
 		</span>
 	{/each}
-</a>
+{/snippet}
+
+{#if href}
+	<a {href} class="{baseClass} {variants[variant]}">
+		{@render letters()}
+	</a>
+{:else}
+	<button {type} {disabled} {onclick} class="{baseClass} {variants[variant]}">
+		{@render letters()}
+	</button>
+{/if}
