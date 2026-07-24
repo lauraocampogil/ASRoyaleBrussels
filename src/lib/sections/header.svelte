@@ -69,7 +69,7 @@
 			aria-label="Brussels Summit Academy - Accueil"
 		>
 			{#if logo}
-				<img src={logo} alt="Brussels Summit Academy" class="h-15 w-auto" />
+				<img src={logo} alt="Brussels Summit Academy" class="h-12 w-auto" />
 			{/if}
 			<span
 				class="font-jakarta text-sm font-bold whitespace-nowrap {theme === 'light'
