@@ -9,7 +9,7 @@
 			{ label: 'Cookies', href: '/cookies' },
 			{ label: 'Politique de confidentialité', href: '/politique-de-confidentialite' }
 		],
-		wordmark = 'AS ROYALE'
+		wordmark = 'SUMMIT ACADEMY'
 	}: any = $props();
 
 	let wordmarkWrapEl: HTMLElement;
@@ -95,13 +95,13 @@
 		class="absolute bottom-0 left-1/2 w-full -translate-x-1/2 text-center"
 	>
 		<span
-			class="pointer-events-none block font-clash text-[16vw] leading-[0.8] font-bold whitespace-nowrap text-white/20 uppercase select-none"
+			class="pointer-events-none block font-clash text-[10vw] leading-[0.8] font-bold whitespace-nowrap text-white/20 uppercase select-none"
 		>
 			{wordmark}
 		</span>
 
 		<span
-			class="wordmark-dots pointer-events-none absolute inset-0 block font-clash text-[16vw] leading-[0.8] font-bold whitespace-nowrap uppercase select-none"
+			class="wordmark-dots pointer-events-none absolute inset-0 block font-clash text-[10vw] leading-[0.8] font-bold whitespace-nowrap uppercase select-none"
 		>
 			{wordmark}
 		</span>

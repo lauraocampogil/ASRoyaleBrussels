@@ -66,17 +66,17 @@
 		<a
 			href="/"
 			class="col-span-2 flex items-center gap-2"
-			aria-label="AS Royale Brussels - Accueil"
+			aria-label="Brussels Summit Academy - Accueil"
 		>
 			{#if logo}
-				<img src={logo} alt="AS Royale Brussels" class="h-15 w-auto" />
+				<img src={logo} alt="Brussels Summit Academy" class="h-15 w-auto" />
 			{/if}
 			<span
 				class="font-jakarta text-sm font-bold whitespace-nowrap {theme === 'light'
 					? 'text-primary'
 					: 'text-white'}"
 			>
-				AS ROYALE BRUSSELS
+				BRUSSELS SUMMIT ACADEMY
 			</span>
 		</a>
 
