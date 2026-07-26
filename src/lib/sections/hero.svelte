@@ -1,4 +1,3 @@
-<!-- Hero.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { heroPinned } from '$lib/stores/heroPinned';
@@ -14,9 +13,9 @@
 		background
 	}: any = $props();
 
-	let sectionEl: HTMLElement;
-	let videoWrapEl: HTMLElement;
-	let contentEl: HTMLElement;
+	let sectionEl: HTMLElement = $state()!;
+	let videoWrapEl: HTMLElement = $state()!;
+	let contentEl: HTMLElement = $state()!;
 	let videoEl: HTMLVideoElement | undefined = $state();
 
 	onMount(() => {
@@ -27,9 +26,9 @@
 			const { ScrollTrigger } = await import('gsap/ScrollTrigger');
 			gsap.registerPlugin(ScrollTrigger);
 
-			ctx = gsap.context(() => {
-				gsap.set(videoWrapEl, { xPercent: -50 });
+			ScrollTrigger.normalizeScroll(true);
 
+			ctx = gsap.context(() => {
 				gsap.from(contentEl.children, {
 					y: 40,
 					opacity: 0,
@@ -46,6 +45,7 @@
 							end: '+=100%',
 							scrub: true,
 							pin: true,
+							invalidateOnRefresh: true,
 							onUpdate: (self) => {
 								heroPinned.set(self.progress >= 0.5);
 								if (self.progress >= 0.75) {
@@ -79,22 +79,26 @@
 	bind:this={sectionEl}
 	role="presentation"
 	data-header-theme="primary"
-	class="relative h-screen w-full overflow-hidden bg-primary"
+	class="relative h-[100dvh] w-full overflow-hidden bg-primary"
 >
 	<DotGrid fadeBottom />
 
 	<div
-		class="grid-section sm-grid-section content-center relative h-full px-5 pb-[20vh] sm:px-8 md:px-10 lg:px-12 3xl:container 3xl:mx-auto"
+		class="grid-section sm-grid-section content-start relative h-full px-5 pt-28 pb-[26vh] sm:content-center sm:px-8 sm:pt-0 sm:pb-[22vh] md:px-10 md:pb-[20vh] lg:px-12 3xl:container 3xl:mx-auto"
 	>
 		<div
 			bind:this={contentEl}
-			class="col-start-3 col-span-4 flex flex-col items-center gap-y-6 text-center text-white"
+			class="col-span-8 flex flex-col items-center gap-y-5 text-center text-white sm:gap-y-6 xl:col-start-3 xl:col-span-4"
 		>
 			{#if tagline}
 				<Tagline text={tagline} />
 			{/if}
-			<h1 class="text-title-6xl uppercase font-clash">{@html title}</h1>
-			<div class="flex gap-4">
+			<h1
+				class="text-[1.65rem] leading-[1.15] uppercase font-clash 2xs:text-[1.9rem] xs:text-[2.25rem] md:text-title-6xl md:leading-[1.15]"
+			>
+				{@html title}
+			</h1>
+			<div class="flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row sm:gap-4">
 				{#if cta_primary_label}
 					<Button href={cta_primary_href} label={cta_primary_label} variant="primary" />
 				{/if}
@@ -107,7 +111,7 @@
 
 	<div
 		bind:this={videoWrapEl}
-		class="absolute bottom-0 left-1/2 h-[32vh] w-[75vw] overflow-hidden rounded-t-[10px] bg-dark"
+		class="absolute bottom-0 left-1/2 h-[26vh] w-[88vw] -translate-x-1/2 overflow-hidden rounded-t-[10px] bg-dark sm:h-[30vh] sm:w-[80vw] xl:h-[32vh] xl:w-[75vw]"
 	>
 		{#if background}
 			<video
