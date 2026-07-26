@@ -1,71 +1,51 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { Tagline } from '$lib/components';
+	import { reveal } from '$lib/actions/reveal';
 
 	let { eyebrow, title, description, steps = [] }: any = $props();
 
 	let openIndex = $state(0);
-	let sectionEl: HTMLElement;
-	let headerEl: HTMLElement;
 
 	function toggle(i: number) {
 		openIndex = openIndex === i ? -1 : i;
 	}
-
-	onMount(() => {
-		let ctx: any;
-
-		(async () => {
-			const { default: gsap } = await import('gsap');
-			const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-			gsap.registerPlugin(ScrollTrigger);
-
-			ctx = gsap.context(() => {
-				gsap.from(headerEl.children, {
-					y: 30,
-					opacity: 0,
-					duration: 0.8,
-					stagger: 0.12,
-					ease: 'power3.out',
-					scrollTrigger: { trigger: sectionEl, start: 'top 75%' }
-				});
-			}, sectionEl);
-		})();
-
-		return () => ctx?.revert();
-	});
 </script>
 
 <section
 	id="parcours"
 	data-header-theme="primary"
-	bind:this={sectionEl}
 	class="grid-section sm-grid-section bg-primary px-5 py-16 sm:px-8 md:px-10 lg:px-12 xl:py-24 3xl:container 3xl:mx-auto"
 >
-	<div bind:this={headerEl} class="col-span-8 flex flex-col gap-y-4 md:col-span-5">
+	<div use:reveal={{ stagger: 0.12 }} class="col-span-8 flex flex-col gap-y-4 md:col-span-5">
 		{#if eyebrow}
 			<Tagline text={eyebrow} />
 		{/if}
-		<h2 class="text-title-2xl font-clash text-white">{title}</h2>
+		<h2 class="text-mobile-title-xl font-semibold font-clash text-white md:text-title-2xl">
+			{title}
+		</h2>
 		{#if description}
-			<p class="text-body font-jakarta text-white/70">{description}</p>
+			<p class="text-mobile-body font-jakarta text-white/70 md:text-body">{description}</p>
 		{/if}
 	</div>
 
-	<div class="col-span-8 mt-10">
+	<div use:reveal={{ stagger: 0.08 }} class="col-span-8 mt-8 md:mt-10">
 		{#each steps as step, i}
 			<div class="border-t border-white/15 {i === steps.length - 1 ? 'border-b' : ''}">
 				<button
 					type="button"
 					onclick={() => toggle(i)}
-					class="-mx-5 flex w-[calc(100%+2.5rem)] items-center gap-6 px-5 py-7 text-left transition-colors hover:bg-white/5 sm:-mx-8 sm:w-[calc(100%+4rem)] sm:px-8"
+					class="-mx-5 flex w-[calc(100%+2.5rem)] items-center gap-4 px-5 py-5 text-left transition-colors hover:bg-white/5 sm:-mx-8 sm:w-[calc(100%+4rem)] sm:gap-6 sm:px-8 sm:py-7"
 				>
-					<span class="text-title-md font-clash w-16 shrink-0 text-secondary">
+					<span
+						class="text-[1.35rem] font-clash w-10 shrink-0 text-secondary sm:w-16 sm:text-title-lg"
+					>
 						{String(step.order ?? i + 1).padStart(2, '0')}
 					</span>
-					<span class="text-title-md font-jakarta flex-1 text-white">{step.title}</span>
-					<span class="relative h-11 w-11 shrink-0 overflow-hidden">
+					<span class="text-[1.05rem] font-jakarta flex-1 text-white sm:text-title-sm">
+						{step.title}
+					</span>
+					<span class="relative h-9 w-9 shrink-0 overflow-hidden sm:h-11 sm:w-11">
 						<span
 							class="absolute inset-0 transition-transform duration-300"
 							style="transform: rotate({openIndex === i ? 135 : 0}deg);"
@@ -87,8 +67,12 @@
 				</button>
 
 				{#if openIndex === i && step.description}
-					<div transition:slide={{ duration: 250 }} class="pb-7 pl-24">
-						<p class="text-body font-jakarta text-white/70">{step.description}</p>
+					<div transition:slide={{ duration: 250 }} class="pb-5 pl-14 sm:pb-7 sm:pl-24">
+						<p
+							class="text-mobile-body font-jakarta text-white/70 max-w-xl text-balance sm:text-body"
+						>
+							{step.description}
+						</p>
 					</div>
 				{/if}
 			</div>
