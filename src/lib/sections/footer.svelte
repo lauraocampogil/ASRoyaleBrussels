@@ -28,13 +28,51 @@
 
 <footer
 	data-header-theme="primary"
-	class="grid-section sm-grid-section relative w-full overflow-hidden bg-primary px-5 pt-24 pb-40 sm:px-8 md:px-10 lg:px-12 xl:pt-32 xl:pb-56"
+	class="grid-section sm-grid-section relative w-full overflow-hidden bg-primary px-5 pt-24 pb-40 sm:px-8 md:px-10 lg:px-12 xl:pt-32 xl:pb-56 3xl:container 3xl:mx-auto"
 >
-	<div class="relative z-10 col-span-8 flex flex-col gap-6">
-		<div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-			<h2 class="text-title-2xl font-clash text-white">Contacts</h2>
-			<span class="font-jakarta text-sm whitespace-nowrap text-white/50">
-				© {new Date().getFullYear()} Tous droits réservés · {credit_label}
+	<!-- Mobile -->
+	<div class="relative z-10 col-span-8 flex flex-col gap-6 sm:hidden">
+		<h2 class="text-mobile-title-xl font-semibold font-clash text-white">Contacts</h2>
+
+		{#if email}
+			<a
+				href="mailto:{email}"
+				class="font-jakarta inline-flex w-fit items-center gap-1 text-secondary underline underline-offset-4 transition-opacity hover:opacity-80"
+			>
+				{email}
+				<span aria-hidden="true">↗</span>
+			</a>
+		{/if}
+
+		<nav class="flex flex-wrap gap-6">
+			{#each social_links as link}
+				<a
+					href={link.href}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="font-jakarta inline-flex items-center gap-1 text-white transition-colors hover:text-secondary"
+				>
+					{link.label}
+					<span aria-hidden="true">↗</span>
+				</a>
+			{/each}
+		</nav>
+
+		<div class="flex flex-col gap-2">
+			{#each legal_links as link}
+				<a
+					href={link.href}
+					class="font-jakarta text-xs whitespace-nowrap text-white/40 transition-colors hover:text-white/70"
+				>
+					{link.label}
+				</a>
+			{/each}
+		</div>
+
+		<div class="font-jakarta flex flex-col text-xs text-white/50">
+			<span>© {new Date().getFullYear()} Tous droits réservés</span>
+			<span>
+				{credit_label}
 				<a
 					href="https://unixcreativestudio.com/"
 					target="_blank"
@@ -44,6 +82,30 @@
 					Unix
 				</a>
 			</span>
+		</div>
+	</div>
+
+	<!-- Desktop -->
+	<div class="relative z-10 col-span-8 hidden flex-col gap-6 sm:flex">
+		<div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+			<h2 class="text-title-2xl font-clash text-white md:text-title-2xl">Contacts</h2>
+			<div
+				class="font-jakarta flex flex-col text-sm text-white/50 sm:flex-row sm:items-center sm:gap-1"
+			>
+				<span>© {new Date().getFullYear()} Tous droits réservés</span>
+				<span class="hidden sm:inline">·</span>
+				<span>
+					{credit_label}
+					<a
+						href="https://unixcreativestudio.com/"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="underline transition-colors hover:text-white"
+					>
+						Unix
+					</a>
+				</span>
+			</div>
 		</div>
 
 		<div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -71,20 +133,20 @@
 				{/each}
 			</nav>
 		</div>
-	</div>
 
-	<div class="relative z-10 col-span-8 mt-16 flex flex-wrap justify-end gap-4 sm:mt-20">
-		{#each legal_links as link, i}
-			<a
-				href={link.href}
-				class="font-jakarta text-xs whitespace-nowrap text-white/40 transition-colors hover:text-white/70"
-			>
-				{link.label}
-			</a>
-			{#if i < legal_links.length - 1}
-				<span class="text-xs text-white/20">·</span>
-			{/if}
-		{/each}
+		<div class="mt-10 flex flex-wrap items-center justify-end gap-4">
+			{#each legal_links as link, i}
+				<a
+					href={link.href}
+					class="font-jakarta text-xs whitespace-nowrap text-white/40 transition-colors hover:text-white/70"
+				>
+					{link.label}
+				</a>
+				{#if i < legal_links.length - 1}
+					<span class="text-xs text-white/20">·</span>
+				{/if}
+			{/each}
+		</div>
 	</div>
 
 	<div
