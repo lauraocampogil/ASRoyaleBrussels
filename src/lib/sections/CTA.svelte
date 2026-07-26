@@ -128,7 +128,7 @@
 >
 	<DotGrid />
 
-	<div class="pointer-events-none absolute inset-0 overflow-hidden">
+	<div class="pointer-events-none absolute inset-0 hidden overflow-hidden md:block">
 		{#each hover_images as img, i}
 			{@const pos = positions[i]}
 			{#if pos}
@@ -147,9 +147,13 @@
 
 	<div
 		bind:this={textEl}
-		class="relative z-30 col-span-8 mx-auto flex max-w-xl flex-col items-center gap-8 text-center"
+		class="relative z-30 col-span-8 mx-auto flex max-w-xl flex-col items-center gap-6 text-center sm:gap-8"
 	>
-		<h2 class="text-title-2xl font-clash text-primary whitespace-pre-line uppercase">{title}</h2>
+		<h2
+			class="text-mobile-title-xl font-semibold font-clash text-primary whitespace-pre-line uppercase md:text-title-2xl"
+		>
+			{title}
+		</h2>
 		{#if cta_label}<Button href={cta_href} label={cta_label} variant="primary" />{/if}
 	</div>
 </section>
