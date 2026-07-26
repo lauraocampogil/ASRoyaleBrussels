@@ -20,6 +20,9 @@
 		class="col-span-8 mx-auto w-full max-w-2xl rounded-2xl border border-dark/10 bg-background p-8"
 	>
 		<div class="mb-8 flex flex-col items-center gap-3 text-center">
+			{#if data.logo}
+				<img src={data.logo} alt="Brussels Summit Academy" class="mb-2 h-20 w-auto" />
+			{/if}
 			{#if data.eyebrow}
 				<p class="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-primary">
 					<span class="h-px w-6 bg-primary"></span>

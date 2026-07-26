@@ -8,7 +8,8 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 	return {
 		eyebrow: data?.eyebrow ?? '',
-		title: data?.title ?? ''
+		title: data?.title ?? '',
+		logo: data?.logo ? `${PUBLIC_DIRECTUS_URL}/assets/${data.logo}` : ''
 	};
 };
 
