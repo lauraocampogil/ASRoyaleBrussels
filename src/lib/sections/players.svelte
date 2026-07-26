@@ -121,21 +121,25 @@
 	id="players"
 	class="grid-section sm-grid-section bg-background px-5 py-16 sm:px-8 md:px-10 lg:px-12 xl:py-24 3xl:container 3xl:mx-auto"
 >
-	<div class="col-span-8 mb-10 flex flex-col gap-y-4 md:col-span-5">
+	<div class="col-span-8 mb-8 flex flex-col gap-y-4 md:mb-10 md:col-span-5">
 		{#if eyebrow}
 			<Tagline text={eyebrow} />
 		{/if}
-		<h2 class="text-title-2xl font-clash uppercase text-primary">{title}</h2>
+		<h2
+			class="text-mobile-title-xl font-semibold font-clash uppercase text-primary md:text-title-2xl"
+		>
+			{title}
+		</h2>
 		{#if description}
-			<p class="text-body font-jakarta text-dark">{description}</p>
+			<p class="text-mobile-body font-jakarta text-dark md:text-body">{description}</p>
 		{/if}
 	</div>
 
-	<div class="col-span-8 mb-8 inline-flex w-fit overflow-hidden rounded-md">
+	<div class="col-span-8 mb-6 inline-flex w-fit overflow-hidden rounded-md md:mb-8">
 		<button
 			type="button"
 			onclick={() => setGender('male')}
-			class="text-button px-6 py-3 transition-colors {activeGender === 'male'
+			class="text-button px-5 py-2.5 transition-colors sm:px-6 sm:py-3 {activeGender === 'male'
 				? 'bg-primary font-bold text-white'
 				: 'bg-dark/5 text-dark hover:bg-dark/10'}"
 		>
@@ -144,7 +148,7 @@
 		<button
 			type="button"
 			onclick={() => setGender('female')}
-			class="text-button px-6 py-3 transition-colors {activeGender === 'female'
+			class="text-button px-5 py-2.5 transition-colors sm:px-6 sm:py-3 {activeGender === 'female'
 				? 'bg-primary font-bold text-white'
 				: 'bg-dark/5 text-dark hover:bg-dark/10'}"
 		>
@@ -152,9 +156,41 @@
 		</button>
 	</div>
 
-	<div class="col-span-8 grid grid-cols-1 gap-8 md:grid-cols-[360px_1fr] md:items-start">
+	<!-- Liste mobile -->
+	<div class="col-span-8 flex flex-col lg:hidden">
+		{#each displayedPlayers as player, i (player.id)}
+			<div
+				class="border-t border-dark/10 py-4 {i === displayedPlayers.length - 1 ? 'border-b' : ''}"
+			>
+				<div class="flex items-center justify-between gap-3">
+					<div class="flex min-w-0 items-center gap-2">
+						{#if player.highlight_video}
+							<span
+								class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-dark text-white"
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+									><path fill="currentColor" d="M8 5v14l11-7z" /></svg
+								>
+							</span>
+						{/if}
+						<span class="truncate text-sm font-bold uppercase text-primary">{player.name}</span>
+					</div>
+					<span class="shrink-0 text-xs font-medium uppercase text-dark/50">{player.country}</span>
+				</div>
+				<div class="mt-2 flex items-center gap-2 pl-8">
+					{#if player.club_logo}
+						<img src={player.club_logo} alt="" class="h-5 w-5 shrink-0 object-contain" />
+					{/if}
+					<span class="truncate text-xs text-dark/70">{player.club}</span>
+				</div>
+			</div>
+		{/each}
+	</div>
+
+	<!-- Vue desktop -->
+	<div class="col-span-8 hidden grid-cols-[360px_1fr] items-start gap-8 lg:grid">
 		<div
-			class="group sticky top-24 hidden h-115 md:block"
+			class="group sticky top-24 h-115"
 			style="perspective: 1400px;"
 			onmouseenter={handlePhotoEnter}
 			onmouseleave={handlePhotoLeave}
@@ -260,9 +296,6 @@
 							{/each}
 						</select>
 					</th>
-					<th class="pb-3 text-left text-xs font-normal tracking-wide text-dark/40 uppercase">
-						Contact
-					</th>
 				</tr>
 			</thead>
 			<tbody onmouseleave={handleListLeave}>
@@ -293,57 +326,6 @@
 									<img src={player.club_logo} alt="" class="h-4 w-4 object-contain" />
 								{/if}
 								{player.club}
-							</span>
-						</td>
-						<td class="border-b border-dotted border-dark/20 py-4 align-middle">
-							<span class="flex items-center gap-3">
-								{#if player.instagram}
-									<a
-										href={player.instagram}
-										target="_blank"
-										rel="noopener noreferrer"
-										onclick={(e) => e.stopPropagation()}
-										class="text-dark/50 transition-colors hover:text-secondary"
-										aria-label="Instagram de {player.name}"
-									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-										>
-											<path
-												fill="currentColor"
-												d="M18.437 20.937H5.563a2.5 2.5 0 0 1-2.5-2.5V5.563a2.5 2.5 0 0 1 2.5-2.5h12.874a2.5 2.5 0 0 1 2.5 2.5v12.874a2.5 2.5 0 0 1-2.5 2.5M5.563 4.063a1.5 1.5 0 0 0-1.5 1.5v12.874a1.5 1.5 0 0 0 1.5 1.5h12.874a1.5 1.5 0 0 0 1.5-1.5V5.563a1.5 1.5 0 0 0-1.5-1.5Z"
-											/>
-											<path
-												fill="currentColor"
-												d="M12 16.594A4.595 4.595 0 1 1 16.6 12a4.6 4.6 0 0 1-4.6 4.594M12 8.4a3.595 3.595 0 1 0 3.6 3.6A3.6 3.6 0 0 0 12 8.4"
-											/>
-											<circle cx="17.2" cy="6.83" r="1.075" fill="currentColor" />
-										</svg>
-									</a>
-								{/if}
-								{#if player.email}
-									<a
-										href="mailto:{player.email}"
-										onclick={(e) => e.stopPropagation()}
-										class="text-dark/50 transition-colors hover:text-secondary"
-										aria-label="Email de {player.name}"
-									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-										>
-											<path
-												fill="currentColor"
-												d="M4.616 19q-.691 0-1.153-.462T3 17.384V6.616q0-.691.463-1.153T4.615 5h14.77q.69 0 1.152.463T21 6.616v10.769q0 .69-.463 1.153T19.385 19zM12 12.116L4 6.885v10.5q0 .269.173.442t.443.173h14.769q.269 0 .442-.173t.173-.443v-10.5zM12 11l7.692-5H4.308zM4 6.885V6v11.385q0 .269.173.442t.443.173H4z"
-											/>
-										</svg>
-									</a>
-								{/if}
 							</span>
 						</td>
 					</tr>
