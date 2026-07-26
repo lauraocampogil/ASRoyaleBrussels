@@ -79,7 +79,7 @@
 	bind:this={sectionEl}
 	role="presentation"
 	data-header-theme="primary"
-	class="relative h-[100dvh] w-full overflow-hidden bg-primary"
+	class="relative h-dvh w-full overflow-hidden bg-primary"
 >
 	<DotGrid fadeBottom />
 
