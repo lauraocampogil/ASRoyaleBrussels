@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components';
+	import { page } from '$app/state';
 
 	let { logo, cta_label, cta_href, nav_links = [] }: any = $props();
 
@@ -20,8 +21,11 @@
 
 	function handleNavClick(e: MouseEvent, href: string) {
 		const hashIndex = href.indexOf('#');
-		if (hashIndex === -1) return; // pas une ancre, comportement par défaut
+		if (hashIndex === -1) return;
 		const id = href.slice(hashIndex + 1);
+
+		if (page.url.pathname !== '/') return; // navigation normale vers /#id, géré à l'arrivée
+
 		const target = document.getElementById(id);
 		if (!target) {
 			console.warn(`Header: aucun élément avec id="${id}" trouvé pour le lien "${href}"`);
@@ -82,9 +86,11 @@
 
 		<nav class="col-span-4 hidden items-center justify-center gap-8 sm:flex">
 			{#each nav_links as link}
+				{@const isHash = link.href.startsWith('#')}
+				{@const computedHref = isHash && page.url.pathname !== '/' ? `/${link.href}` : link.href}
 				<a
-					href={link.href}
-					onclick={(e) => handleNavClick(e, link.href)}
+					href={computedHref}
+					onclick={(e) => handleNavClick(e, computedHref)}
 					class="group flex overflow-hidden text-button {theme === 'light'
 						? 'text-primary'
 						: 'text-white'}"
