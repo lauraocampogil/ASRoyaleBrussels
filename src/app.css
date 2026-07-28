@@ -91,6 +91,9 @@ body {
 	--font-clash: 'ClashDisplay', sans-serif;
 	--font-sora: 'Sora', sans-serif;
 
+	--text-title-3xl: 2.95rem;
+	--text-title-2xl--font-weight: 600;
+
 	/* H1 — ClashDisplay */
 	--text-title-6xl: 3.815rem;
 	--text-title-6xl--line-height: 1.15;
