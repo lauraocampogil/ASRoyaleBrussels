@@ -1,6 +1,7 @@
 <!-- Players.svelte -->
 <script lang="ts">
 	import { Tagline } from '$lib/components';
+	import { reveal } from '$lib/actions/reveal';
 
 	let { eyebrow, title, description, players = [] }: any = $props();
 
@@ -121,7 +122,7 @@
 	id="players"
 	class="grid-section sm-grid-section bg-background px-5 py-16 sm:px-8 md:px-10 lg:px-12 xl:py-24 3xl:container 3xl:mx-auto"
 >
-	<div class="col-span-8 mb-8 flex flex-col gap-y-4 md:mb-10 md:col-span-5">
+	<div use:reveal class="col-span-8 mb-8 flex flex-col gap-y-4 md:mb-10 md:col-span-5">
 		{#if eyebrow}
 			<Tagline text={eyebrow} />
 		{/if}
