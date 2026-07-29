@@ -9,14 +9,14 @@ export const load: PageServerLoad = async () => {
 	]);
 
 	return {
-		header: { ...header, logo: assetUrl(header.logo) },
-		footer: { ...footer, logo: assetUrl(footer.logo) },
+		header: { ...header, logo: assetUrl(header.logo, { width: 160 }) },
+		footer: { ...footer, logo: assetUrl(footer.logo, { width: 160 }) },
 		eyebrow: bio?.eyebrow ?? '',
 		title: bio?.title ?? '',
 		content: bio?.content ?? '',
 		closingLine: bio?.closing_line ?? '',
-		image1: bio?.image_1 ? assetUrl(bio.image_1) : '',
-		image2: bio?.image_2 ? assetUrl(bio.image_2) : '',
-		image3: bio?.image_3 ? assetUrl(bio.image_3) : ''
+		image1: bio?.image_1 ? assetUrl(bio.image_1, { width: 900 }) : '',
+		image2: bio?.image_2 ? assetUrl(bio.image_2, { width: 900 }) : '',
+		image3: bio?.image_3 ? assetUrl(bio.image_3, { width: 900 }) : ''
 	};
 };

@@ -33,18 +33,22 @@ export async function load() {
 		directus.request(readSingleton('Footer'))
 	]);
 
-	console.log('CTA:', JSON.stringify(CTA, null, 2));
-
 	const blocks = [
-		{ type: 'HeaderBlock', props: { ...header, logo: assetUrl(header.logo) } },
-		{ type: 'HeroBlock', props: { ...hero, background: assetUrl(hero.video_background) } },
+		{
+			type: 'HeaderBlock',
+			props: { ...header, logo: assetUrl(header.logo, { width: 160 }) }
+		},
+		{
+			type: 'HeroBlock',
+			props: { ...hero, background: assetUrl(hero.video_background) }
+		},
 		{ type: 'MarqueeBlock', props: marquee },
 		{
 			type: 'MethodBlock',
 			props: {
 				...method,
-				image: assetUrl(method.image),
-				image_subject: assetUrl(method.image_subject)
+				image: assetUrl(method.image, { width: 900 }),
+				image_subject: assetUrl(method.image_subject, { width: 900 })
 			}
 		},
 		{ type: 'ParcoursBlock', props: { ...parcours, steps: parcoursSteps } },
@@ -61,10 +65,10 @@ export async function load() {
 					country: p.country,
 					country_code: p.country_code,
 					club: p.club,
-					club_logo: assetUrl(p.club_logo),
+					club_logo: assetUrl(p.club_logo, { width: 80 }),
 					instagram: p.instagram,
 					email: p.email,
-					photo: assetUrl(p.photo),
+					photo: assetUrl(p.photo, { width: 700 }),
 					highlight_video: assetUrl(p.highlight_video),
 					gender: p.gender,
 					goals: p.goals,
@@ -84,8 +88,8 @@ export async function load() {
 				staff: staffMembers.map((s: any) => ({
 					name: s.name,
 					role: s.role,
-					image: assetUrl(s.photo),
-					image_subject: assetUrl(s.image_subject)
+					image: assetUrl(s.photo, { width: 500 }),
+					image_subject: assetUrl(s.image_subject, { width: 500 })
 				}))
 			}
 		},
@@ -95,11 +99,15 @@ export async function load() {
 				title: CTA.title,
 				cta_label: CTA.cta_label,
 				cta_href: CTA.cta_href,
-				hover_images: (CTA.hover_images ?? []).map((f: any) => assetUrl(f.directus_files_id)),
-				debug_raw: CTA.hover_images
+				hover_images: (CTA.hover_images ?? []).map((f: any) =>
+					assetUrl(f.directus_files_id, { width: 250 })
+				)
 			}
 		},
-		{ type: 'FooterBlock', props: { ...footer, logo: assetUrl(footer.logo) } }
+		{
+			type: 'FooterBlock',
+			props: { ...footer, logo: assetUrl(footer.logo, { width: 160 }) }
+		}
 	];
 
 	return { blocks };

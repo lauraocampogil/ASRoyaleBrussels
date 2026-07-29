@@ -9,7 +9,9 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	return {
 		eyebrow: data?.eyebrow ?? '',
 		title: data?.title ?? '',
-		logo: data?.logo ? `${PUBLIC_DIRECTUS_URL}/assets/${data.logo}` : ''
+		logo: data?.logo
+			? `${PUBLIC_DIRECTUS_URL}/assets/${data.logo}?width=160&quality=80&format=webp`
+			: ''
 	};
 };
 
