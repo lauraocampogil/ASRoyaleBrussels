@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import { Button } from '$lib/components';
 	import { page } from '$app/state';
 
@@ -7,10 +8,27 @@
 
 	let hidden = $state(false);
 	let theme = $state<'primary' | 'light'>('primary');
+	let mobileMenuOpen = $state(false);
 	let lastY = 0;
 	let headerEl: HTMLElement;
 
+	let menuLinksVisible = $state(false);
+
+	$effect(() => {
+		if (mobileMenuOpen) {
+			menuLinksVisible = false;
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					menuLinksVisible = true;
+				});
+			});
+		} else {
+			menuLinksVisible = false;
+		}
+	});
+
 	function updateTheme() {
+		if (mobileMenuOpen) return;
 		const sampleY = (headerEl?.offsetHeight ?? 80) + 10;
 		const el = document.elementFromPoint(window.innerWidth / 2, sampleY);
 		const themedEl = el?.closest('[data-header-theme]');
@@ -20,6 +38,8 @@
 	}
 
 	function handleNavClick(e: MouseEvent, href: string) {
+		mobileMenuOpen = false;
+
 		const hashIndex = href.indexOf('#');
 		if (hashIndex === -1) return;
 		const id = href.slice(hashIndex + 1);
@@ -37,8 +57,38 @@
 		window.scrollTo({ top, behavior: 'smooth' });
 	}
 
+	function toggleMobileMenu() {
+		mobileMenuOpen = !mobileMenuOpen;
+	}
+
+	function preventTouchMove(e: TouchEvent) {
+		e.preventDefault();
+	}
+
+	// Verrouille le scroll pendant que le menu est ouvert sans jamais toucher
+	// à la position de scroll (donc rien à restaurer, pas de saut à la fermeture)
+	$effect(() => {
+		if (mobileMenuOpen) {
+			document.documentElement.style.overflow = 'hidden';
+			document.body.style.overflow = 'hidden';
+			document.addEventListener('touchmove', preventTouchMove, { passive: false });
+		} else {
+			document.documentElement.style.overflow = '';
+			document.body.style.overflow = '';
+			document.removeEventListener('touchmove', preventTouchMove);
+		}
+
+		return () => {
+			document.documentElement.style.overflow = '';
+			document.body.style.overflow = '';
+			document.removeEventListener('touchmove', preventTouchMove);
+		};
+	});
+
 	onMount(() => {
 		const handleScroll = () => {
+			if (mobileMenuOpen) return;
+
 			const currentY = window.scrollY;
 			if (currentY < 80) {
 				hidden = false;
@@ -52,10 +102,21 @@
 			updateTheme();
 		};
 
+		const handleKeydown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') mobileMenuOpen = false;
+		};
+
 		window.addEventListener('scroll', handleScroll, { passive: true });
+		window.addEventListener('keydown', handleKeydown);
 		updateTheme();
 
-		return () => window.removeEventListener('scroll', handleScroll);
+		return () => {
+			window.removeEventListener('scroll', handleScroll);
+			window.removeEventListener('keydown', handleKeydown);
+			document.documentElement.style.overflow = '';
+			document.body.style.overflow = '';
+			document.removeEventListener('touchmove', preventTouchMove);
+		};
 	});
 </script>
 
@@ -66,17 +127,20 @@
 		: 'bg-primary'}"
 	class:-translate-y-full={hidden}
 >
-	<div class="grid-section sm-grid-section items-center py-4 3xl:container 3xl:mx-auto">
+	<div
+		class="flex items-center justify-between px-5 py-4 sm:grid sm:grid-section sm:sm-grid-section sm:items-center sm:px-8 md:px-10 lg:px-12 3xl:container 3xl:mx-auto"
+	>
 		<a
 			href="/"
-			class="col-span-2 flex items-center gap-2"
+			class="flex items-center gap-2 sm:col-span-2"
 			aria-label="Brussels Summit Academy - Accueil"
 		>
 			{#if logo}
 				<img src={logo} alt="Brussels Summit Academy" class="h-12 w-auto" />
 			{/if}
 			<span
-				class="font-jakarta text-sm font-bold whitespace-nowrap {theme === 'light'
+				class="hidden font-jakarta text-sm font-bold whitespace-nowrap sm:inline-block {theme ===
+				'light'
 					? 'text-primary'
 					: 'text-white'}"
 			>
@@ -84,7 +148,7 @@
 			</span>
 		</a>
 
-		<nav class="col-span-4 hidden items-center justify-center gap-8 sm:flex">
+		<nav class="hidden items-center justify-center gap-8 sm:col-span-4 sm:flex">
 			{#each nav_links as link}
 				{@const isHash = link.href.startsWith('#')}
 				{@const computedHref = isHash && page.url.pathname !== '/' ? `/${link.href}` : link.href}
@@ -112,10 +176,82 @@
 			{/each}
 		</nav>
 
-		<div class="col-span-2 flex justify-end">
+		<div class="flex items-center gap-4 sm:col-span-2 sm:justify-end">
 			{#if cta_label}
-				<Button href={cta_href} label={cta_label} variant="primary" />
+				<div class="hidden sm:block">
+					<Button href={cta_href} label={cta_label} variant="primary" />
+				</div>
 			{/if}
+
+			<button
+				type="button"
+				aria-label={mobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+				aria-expanded={mobileMenuOpen}
+				onclick={toggleMobileMenu}
+				class="relative z-[60] flex h-8 w-8 flex-col items-center justify-center gap-[5px] sm:hidden"
+			>
+				<span
+					class="block h-[2px] w-6 rounded-full transition-all duration-300 {mobileMenuOpen
+						? 'translate-y-[7px] rotate-45 bg-white'
+						: theme === 'light'
+							? 'bg-primary'
+							: 'bg-white'}"
+				></span>
+				<span
+					class="block h-[2px] w-6 rounded-full transition-all duration-300 {mobileMenuOpen
+						? 'opacity-0'
+						: theme === 'light'
+							? 'bg-primary'
+							: 'bg-white'}"
+				></span>
+				<span
+					class="block h-[2px] w-6 rounded-full transition-all duration-300 {mobileMenuOpen
+						? '-translate-y-[7px] -rotate-45 bg-white'
+						: theme === 'light'
+							? 'bg-primary'
+							: 'bg-white'}"
+				></span>
+			</button>
 		</div>
 	</div>
+
+	{#if mobileMenuOpen}
+		<div
+			transition:fade={{ duration: 120 }}
+			class="fixed inset-0 z-40 flex flex-col bg-primary sm:hidden"
+		>
+			<nav class="flex flex-1 flex-col items-center justify-center gap-7 px-5">
+				{#each nav_links as link, i}
+					{@const isHash = link.href.startsWith('#')}
+					{@const computedHref = isHash && page.url.pathname !== '/' ? `/${link.href}` : link.href}
+					<a
+						href={computedHref}
+						onclick={(e) => handleNavClick(e, computedHref)}
+						style="transition-delay: {150 + i * 100}ms"
+						class="font-clash text-3xl uppercase text-white transition-all duration-500 ease-out {menuLinksVisible
+							? 'translate-y-0 opacity-100'
+							: 'translate-y-3 opacity-0'}"
+					>
+						{link.label}
+					</a>
+				{/each}
+
+				{#if cta_label}
+					<div
+						style="transition-delay: {150 + nav_links.length * 100}ms"
+						class="mt-4 transition-all duration-500 ease-out {menuLinksVisible
+							? 'translate-y-0 opacity-100'
+							: 'translate-y-3 opacity-0'}"
+					>
+						<Button
+							href={cta_href}
+							label={cta_label}
+							variant="primary"
+							onclick={() => (mobileMenuOpen = false)}
+						/>
+					</div>
+				{/if}
+			</nav>
+		</div>
+	{/if}
 </header>
