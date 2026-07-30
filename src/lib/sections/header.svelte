@@ -127,19 +127,17 @@
 		: 'bg-primary'}"
 	class:-translate-y-full={hidden}
 >
-	<div
-		class="flex items-center justify-between px-5 py-4 sm:grid sm:grid-section sm:sm-grid-section sm:items-center sm:px-8 md:px-10 lg:px-12 3xl:container 3xl:mx-auto"
-	>
+	<div class="grid-section flex items-center justify-between px-5 py-4 sm:px-8 md:px-10 lg:px-12">
 		<a
 			href="/"
-			class="flex items-center gap-2 sm:col-span-2"
+			class="flex items-center gap-2 xl:col-span-2"
 			aria-label="Brussels Summit Academy - Accueil"
 		>
 			{#if logo}
 				<img src={logo} alt="Brussels Summit Academy" class="h-12 w-auto" />
 			{/if}
 			<span
-				class="hidden font-jakarta text-sm font-bold whitespace-nowrap sm:inline-block {theme ===
+				class="hidden font-jakarta text-sm font-bold whitespace-nowrap xl:inline-block {theme ===
 				'light'
 					? 'text-primary'
 					: 'text-white'}"
@@ -148,7 +146,7 @@
 			</span>
 		</a>
 
-		<nav class="hidden items-center justify-center gap-8 sm:col-span-4 sm:flex">
+		<nav class="hidden items-center justify-center gap-8 xl:col-span-4 xl:flex">
 			{#each nav_links as link}
 				{@const isHash = link.href.startsWith('#')}
 				{@const computedHref = isHash && page.url.pathname !== '/' ? `/${link.href}` : link.href}
@@ -176,9 +174,9 @@
 			{/each}
 		</nav>
 
-		<div class="flex items-center gap-4 sm:col-span-2 sm:justify-end">
+		<div class="flex items-center gap-4 xl:col-span-2 xl:justify-end">
 			{#if cta_label}
-				<div class="hidden sm:block">
+				<div class="hidden xl:block">
 					<Button href={cta_href} label={cta_label} variant="primary" />
 				</div>
 			{/if}
@@ -188,25 +186,25 @@
 				aria-label={mobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
 				aria-expanded={mobileMenuOpen}
 				onclick={toggleMobileMenu}
-				class="relative z-[60] flex h-8 w-8 flex-col items-center justify-center gap-[5px] sm:hidden"
+				class="relative z-60 flex h-8 w-8 flex-col items-center justify-center gap-1.25 xl:hidden"
 			>
 				<span
-					class="block h-[2px] w-6 rounded-full transition-all duration-300 {mobileMenuOpen
-						? 'translate-y-[7px] rotate-45 bg-white'
+					class="block h-0.5 w-6 rounded-full transition-all duration-300 {mobileMenuOpen
+						? 'translate-y-1.75 rotate-45 bg-white'
 						: theme === 'light'
 							? 'bg-primary'
 							: 'bg-white'}"
 				></span>
 				<span
-					class="block h-[2px] w-6 rounded-full transition-all duration-300 {mobileMenuOpen
+					class="block h-0.5 w-6 rounded-full transition-all duration-300 {mobileMenuOpen
 						? 'opacity-0'
 						: theme === 'light'
 							? 'bg-primary'
 							: 'bg-white'}"
 				></span>
 				<span
-					class="block h-[2px] w-6 rounded-full transition-all duration-300 {mobileMenuOpen
-						? '-translate-y-[7px] -rotate-45 bg-white'
+					class="block h-0.5 w-6 rounded-full transition-all duration-300 {mobileMenuOpen
+						? '-translate-y-1.25 -rotate-45 bg-white'
 						: theme === 'light'
 							? 'bg-primary'
 							: 'bg-white'}"
@@ -218,9 +216,9 @@
 	{#if mobileMenuOpen}
 		<div
 			transition:fade={{ duration: 120 }}
-			class="fixed inset-0 z-40 flex flex-col bg-primary sm:hidden"
+			class="fixed inset-0 z-40 flex flex-col bg-primary xl:hidden"
 		>
-			<nav class="flex flex-1 flex-col items-center justify-center gap-7 px-5">
+			<nav class="flex flex-1 flex-col items-center justify-center gap-8 px-5">
 				{#each nav_links as link, i}
 					{@const isHash = link.href.startsWith('#')}
 					{@const computedHref = isHash && page.url.pathname !== '/' ? `/${link.href}` : link.href}
@@ -228,7 +226,7 @@
 						href={computedHref}
 						onclick={(e) => handleNavClick(e, computedHref)}
 						style="transition-delay: {150 + i * 100}ms"
-						class="font-clash text-3xl uppercase text-white transition-all duration-500 ease-out {menuLinksVisible
+						class="font-clash text-3xl uppercase text-white transition-all duration-500 ease-out sm:text-3xl lg:text-5xl {menuLinksVisible
 							? 'translate-y-0 opacity-100'
 							: 'translate-y-3 opacity-0'}"
 					>
@@ -247,6 +245,7 @@
 							href={cta_href}
 							label={cta_label}
 							variant="primary"
+							class="!px-9 !py-4 !text-lg"
 							onclick={() => (mobileMenuOpen = false)}
 						/>
 					</div>
