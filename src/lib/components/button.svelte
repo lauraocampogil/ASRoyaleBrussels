@@ -5,7 +5,8 @@
 		variant = 'primary',
 		type = 'button',
 		disabled = false,
-		onclick
+		onclick,
+		class: extraClass = ''
 	}: {
 		href?: string;
 		label: string;
@@ -13,6 +14,7 @@
 		type?: 'button' | 'submit';
 		disabled?: boolean;
 		onclick?: (e: MouseEvent) => void;
+		class?: string;
 	} = $props();
 
 	const variants: Record<string, string> = {
@@ -42,11 +44,11 @@
 {/snippet}
 
 {#if href}
-	<a {href} class="{baseClass} {variants[variant]}">
+	<a {href} class="{baseClass} {variants[variant]} {extraClass}">
 		{@render letters()}
 	</a>
 {:else}
-	<button {type} {disabled} {onclick} class="{baseClass} {variants[variant]}">
+	<button {type} {disabled} {onclick} class="{baseClass} {variants[variant]} {extraClass}">
 		{@render letters()}
 	</button>
 {/if}
