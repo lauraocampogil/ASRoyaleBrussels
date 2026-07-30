@@ -64,7 +64,7 @@
 
 <main data-header-theme="light" class="min-h-screen bg-background">
 	<div
-		class="grid-section sm-grid-section px-5 pt-40 pb-24 sm:px-8 sm:pt-44 sm:pb-28 md:px-10 md:pt-48 md:pb-32 lg:px-12 xl:pt-56 xl:pb-40 3xl:container 3xl:mx-auto"
+		class="grid-section sm-grid-section px-5 pt-40 pb-10 sm:px-8 sm:pt-44 sm:pb-28 md:px-10 md:pt-48 md:pb-32 lg:px-12 xl:pt-56 xl:pb-40 3xl:container 3xl:mx-auto"
 	>
 		<div class="col-span-8 mb-14 md:col-span-6 md:col-start-1">
 			{#if data.eyebrow}
@@ -78,92 +78,95 @@
 		</div>
 
 		<!-- Bloc 1 — foto links -->
-		<div class="relative order-1 col-span-8 lg:order-0 lg:col-span-3 lg:col-start-1">
-			<div
-				use:reveal
-				class="h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
-			>
-				{#if data.image1}
-					<img src={data.image1} alt="" class="h-full w-full object-cover" />
-				{/if}
-			</div>
-		</div>
 		<div
-			use:reveal={{ stagger: 0.1 }}
-			class="order-2 col-span-8 mt-6 flex flex-col gap-4 lg:order-0 lg:col-span-3 lg:col-start-4 lg:mt-0 lg:justify-center"
+			class="col-span-8 flex flex-col lg:col-span-6 lg:col-start-1 lg:grid lg:grid-cols-2 lg:items-center lg:gap-x-10"
 		>
-			{#each block1 as paragraph}
-				<p class="text-mobile-body font-jakarta leading-relaxed text-dark md:text-body">
-					{paragraph}
-				</p>
-			{/each}
+			<div class="relative lg:order-1">
+				<div
+					use:reveal
+					class="h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
+				>
+					{#if data.image1}
+						<img src={data.image1} alt="" class="h-full w-full object-cover" />
+					{/if}
+				</div>
+			</div>
+			<div use:reveal={{ stagger: 0.1 }} class="mt-6 flex flex-col gap-4 lg:order-2 lg:mt-0">
+				{#each block1 as paragraph}
+					<p class="text-mobile-body font-jakarta leading-relaxed text-dark md:text-body">
+						{paragraph}
+					</p>
+				{/each}
+			</div>
 		</div>
 
 		<!-- Bloc 2 — foto rechts -->
 		<div
-			use:reveal={{ stagger: 0.1 }}
-			class="order-2 col-span-8 mt-6 flex flex-col gap-4 lg:order-0 lg:col-span-3 lg:col-start-2 lg:mt-16 lg:justify-center"
+			class="col-span-8 mt-16 flex flex-col lg:col-span-6 lg:col-start-3 lg:mt-16 lg:grid lg:grid-cols-2 lg:items-center lg:gap-x-10"
 		>
-			{#each block2 as paragraph}
-				<p class="text-mobile-body font-jakarta leading-relaxed text-dark md:text-body">
-					{paragraph}
-				</p>
-			{/each}
-		</div>
-		<div class="relative order-1 col-span-8 mt-16 lg:order-0 lg:col-span-3 lg:col-end-8 lg:mt-16">
-			<div
-				use:reveal
-				class="h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
-			>
-				{#if data.image2}
-					<img src={data.image2} alt="" class="h-full w-full object-cover" />
-				{/if}
+			<div class="relative lg:order-2">
+				<div
+					use:reveal
+					class="h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
+				>
+					{#if data.image2}
+						<img src={data.image2} alt="" class="h-full w-full object-cover" />
+					{/if}
+				</div>
+			</div>
+			<div use:reveal={{ stagger: 0.1 }} class="mt-6 flex flex-col gap-4 lg:order-1 lg:mt-0">
+				{#each block2 as paragraph}
+					<p class="text-mobile-body font-jakarta leading-relaxed text-dark md:text-body">
+						{paragraph}
+					</p>
+				{/each}
 			</div>
 		</div>
 
 		<!-- Bloc 3 — foto links -->
-		<div class="relative order-1 col-span-8 mt-16 lg:order-0 lg:col-span-3 lg:col-start-1">
-			<div
-				use:reveal
-				class="h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
-			>
-				{#if data.image3}
-					<img src={data.image3} alt="" class="h-full w-full object-cover" />
-				{/if}
-			</div>
-		</div>
 		<div
-			use:reveal={{ stagger: 0.1 }}
-			class="order-2 col-span-8 mt-6 flex flex-col gap-4 lg:order-0 lg:col-span-3 lg:col-start-4 lg:mt-16 lg:justify-center"
+			class="col-span-8 mt-16 flex flex-col lg:col-span-6 lg:col-start-1 lg:mt-16 lg:grid lg:grid-cols-2 lg:items-center lg:gap-x-10"
 		>
-			{#each block3 as paragraph}
-				<p class="text-mobile-body font-jakarta leading-relaxed text-dark md:text-body">
-					{paragraph}
-				</p>
-			{/each}
+			<div class="relative lg:order-1">
+				<div
+					use:reveal
+					class="h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
+				>
+					{#if data.image3}
+						<img src={data.image3} alt="" class="h-full w-full object-cover" />
+					{/if}
+				</div>
+			</div>
+			<div use:reveal={{ stagger: 0.1 }} class="mt-6 flex flex-col gap-4 lg:order-2 lg:mt-0">
+				{#each block3 as paragraph}
+					<p class="text-mobile-body font-jakarta leading-relaxed text-dark md:text-body">
+						{paragraph}
+					</p>
+				{/each}
+			</div>
 		</div>
 	</div>
 
 	{#if data.closingLine}
 		<section
 			data-header-theme="light"
-			class="grid-section sm-grid-section bg-background px-5 py-20 sm:px-8 sm:py-24 md:px-10 lg:px-12 xl:py-32 3xl:container 3xl:mx-auto"
+			class="grid-section sm-grid-section bg-background px-5 pt-4 pb-20 sm:px-8 sm:py-24 md:px-10 lg:px-12 xl:py-32 3xl:container 3xl:mx-auto"
 		>
 			<div
 				bind:this={quoteEl}
-				class="col-span-8 mx-auto text-center md:col-span-6 md:col-start-2 lg:col-span-6 lg:col-start-2"
+				class="col-span-8 mx-auto min-w-0 text-center md:col-span-6 md:col-start-2 lg:col-span-6 lg:col-start-2"
 			>
 				<h2
 					class="font-clash text-mobile-title-lg leading-[1.15] uppercase md:text-title-xl lg:text-title-3xl"
 				>
 					<span class="block">
 						{#each closingLine1 as word, i}
-							<span class="quote-word">{word}{i < closingLine1.length - 1 ? '\u00A0' : ''}</span>
+							<span class="quote-word">{word}{i < closingLine1.length - 1 ? ' ' : ''}</span>
 						{/each}
 					</span>
 					<span class="block">
 						{#each closingLine2 as word, i}
-							<span class="quote-word">{word}{i < closingLine2.length - 1 ? '\u00A0' : ''}</span>
+							<span class="quote-word">{word}{i < closingLine2.length - 1 ? ' ' : ''}</span>
 						{/each}
 					</span>
 				</h2>
