@@ -117,6 +117,8 @@
 			<video
 				bind:this={videoEl}
 				src={background}
+				autoplay
+				preload="auto"
 				muted
 				loop
 				playsinline
