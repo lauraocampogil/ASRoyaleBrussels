@@ -10,14 +10,14 @@
 </script>
 
 <section
-	class="grid-section sm-grid-section relative flex min-h-screen items-center justify-center bg-background px-5 py-24 sm:px-8 md:px-10 lg:px-12 3xl:container 3xl:mx-auto"
+	class="grid-section sm-grid-section relative flex min-h-screen items-center justify-center bg-background px-5 py-16 sm:px-8 sm:py-20 md:px-10 md:py-24 lg:px-12 3xl:container 3xl:mx-auto"
 >
 	<div class="absolute top-8 left-5 sm:left-8 md:left-10 lg:left-12">
 		<Button href="/" label="← Retour à l'accueil" variant="outline-primary" />
 	</div>
 
 	<div
-		class="col-span-8 mx-auto w-full max-w-2xl rounded-2xl border border-dark/10 bg-background p-8"
+		class="col-span-8 mx-auto mt-16 w-full max-w-2xl rounded-2xl border border-dark/10 bg-background p-5 sm:mt-0 sm:p-6 md:p-8"
 	>
 		<div class="mb-8 flex flex-col items-center gap-3 text-center">
 			{#if data.logo}
@@ -31,7 +31,9 @@
 				</p>
 			{/if}
 			{#if data.title}
-				<h1 class="font-clash text-title-xl uppercase text-dark">{data.title}</h1>
+				<h1 class="font-clash text-mobile-title-xl uppercase text-dark md:text-title-xl">
+					{data.title}
+				</h1>
 			{/if}
 		</div>
 
@@ -76,7 +78,7 @@
 			>
 				<input type="hidden" name="type" value={activeTab} />
 
-				<div class="grid grid-cols-2 gap-x-6 gap-y-6">
+				<div class="grid grid-cols-1 gap-y-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-6">
 					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Prénom</span>
 						<input
