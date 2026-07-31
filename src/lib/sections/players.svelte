@@ -166,13 +166,19 @@
 				<div class="flex items-center justify-between gap-3">
 					<div class="flex min-w-0 items-center gap-2">
 						{#if player.highlight_video}
-							<span
-								class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-dark text-white"
+							<button
+								type="button"
+								onclick={() => {
+									selected = player;
+									openModal();
+								}}
+								aria-label="Voir la vidéo de {player.name}"
+								class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-dark text-white transition-opacity active:opacity-70"
 							>
 								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
 									><path fill="currentColor" d="M8 5v14l11-7z" /></svg
 								>
-							</span>
+							</button>
 						{/if}
 						<span class="truncate text-sm font-bold uppercase text-primary">{player.name}</span>
 					</div>
