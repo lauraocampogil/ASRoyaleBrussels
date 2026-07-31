@@ -86,20 +86,28 @@
 	});
 
 	onMount(() => {
+		let ticking = false;
+
 		const handleScroll = () => {
 			if (mobileMenuOpen) return;
+			if (ticking) return;
+			ticking = true;
 
-			const currentY = window.scrollY;
-			if (currentY < 80) {
-				hidden = false;
-			} else if (currentY > lastY) {
-				hidden = true;
-			} else {
-				hidden = false;
-			}
-			lastY = currentY;
+			requestAnimationFrame(() => {
+				const currentY = window.scrollY;
 
-			updateTheme();
+				if (currentY < 80) {
+					hidden = false;
+				} else if (currentY > lastY + 5) {
+					hidden = true;
+				} else if (currentY < lastY - 5) {
+					hidden = false;
+				}
+
+				lastY = currentY;
+				updateTheme();
+				ticking = false;
+			});
 		};
 
 		const handleKeydown = (e: KeyboardEvent) => {
@@ -204,7 +212,7 @@
 				></span>
 				<span
 					class="block h-0.5 w-6 rounded-full transition-all duration-300 {mobileMenuOpen
-						? '-translate-y-1.25 -rotate-45 bg-white'
+						? '-translate-y-1.75 -rotate-45 bg-white'
 						: theme === 'light'
 							? 'bg-primary'
 							: 'bg-white'}"
