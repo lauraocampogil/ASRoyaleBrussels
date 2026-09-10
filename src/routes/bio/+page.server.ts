@@ -17,6 +17,9 @@ export const load: PageServerLoad = async () => {
 		closingLine: bio?.closing_line ?? '',
 		image1: bio?.image_1 ? assetUrl(bio.image_1, { width: 900 }) : '',
 		image2: bio?.image_2 ? assetUrl(bio.image_2, { width: 900 }) : '',
-		image3: bio?.image_3 ? assetUrl(bio.image_3, { width: 900 }) : ''
+		image3: bio?.image_3 ? assetUrl(bio.image_3, { width: 900 }) : '',
+		image1Subject: bio?.image_1_subject ? assetUrl(bio.image_1_subject, { width: 900 }) : '',
+		image2Subject: bio?.image_2_subject ? assetUrl(bio.image_2_subject, { width: 900 }) : '',
+		image3Subject: bio?.image_3_subject ? assetUrl(bio.image_3_subject, { width: 900 }) : ''
 	};
 };

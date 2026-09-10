@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { HeaderBlock as Header, FooterBlock as Footer } from '$lib/sections';
-	import { Button, Tagline } from '$lib/components';
+	import { Button, Tagline, DotGrid } from '$lib/components';
 	import { reveal } from '$lib/actions/reveal';
 	import type { PageData } from './$types';
 
@@ -84,10 +84,22 @@
 			<div class="relative lg:order-1">
 				<div
 					use:reveal
-					class="h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
+					class="group relative h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
 				>
 					{#if data.image1}
 						<img src={data.image1} alt="" class="h-full w-full object-cover" />
+					{/if}
+					<div
+						class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+					>
+						<DotGrid />
+					</div>
+					{#if data.image1Subject}
+						<img
+							src={data.image1Subject}
+							alt=""
+							class="pointer-events-none absolute inset-0 h-full w-full object-cover"
+						/>
 					{/if}
 				</div>
 			</div>
@@ -107,10 +119,22 @@
 			<div class="relative lg:order-2">
 				<div
 					use:reveal
-					class="h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
+					class="group relative h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
 				>
 					{#if data.image2}
 						<img src={data.image2} alt="" class="h-full w-full object-cover" />
+					{/if}
+					<div
+						class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+					>
+						<DotGrid />
+					</div>
+					{#if data.image2Subject}
+						<img
+							src={data.image2Subject}
+							alt=""
+							class="pointer-events-none absolute inset-0 h-full w-full object-cover"
+						/>
 					{/if}
 				</div>
 			</div>
@@ -130,10 +154,22 @@
 			<div class="relative lg:order-1">
 				<div
 					use:reveal
-					class="h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
+					class="group relative h-64 w-full overflow-hidden rounded-lg bg-dark-accent/20 sm:h-80 md:h-96 lg:h-115"
 				>
 					{#if data.image3}
 						<img src={data.image3} alt="" class="h-full w-full object-cover" />
+					{/if}
+					<div
+						class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+					>
+						<DotGrid />
+					</div>
+					{#if data.image3Subject}
+						<img
+							src={data.image3Subject}
+							alt=""
+							class="pointer-events-none absolute inset-0 h-full w-full object-cover"
+						/>
 					{/if}
 				</div>
 			</div>
