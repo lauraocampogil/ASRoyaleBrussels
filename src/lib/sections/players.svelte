@@ -214,28 +214,24 @@
 								<h3 class="text-title-md font-clash mb-4 text-white uppercase">{selected.name}</h3>
 								<div class="grid grid-cols-2 gap-5">
 									<div>
-										<span class="block text-xs text-white/50 uppercase">Buts</span>
-										<span class="text-title-md font-clash text-white">{selected.goals ?? '-'}</span>
+										<span class="block text-xs text-white/50 uppercase mb-1">Buts</span>
+										<span class="text-title-sm text-white">{selected.goals ?? '-'}</span>
 									</div>
 									<div>
-										<span class="block text-xs text-white/50 uppercase">Passes D.</span>
-										<span class="text-title-md font-clash text-white"
-											>{selected.assists ?? '-'}</span
-										>
+										<span class="block text-xs text-white/50 uppercase mb-1">Passes D.</span>
+										<span class="text-title-sm text-white">{selected.assists ?? '-'}</span>
 									</div>
 									<div>
-										<span class="block text-xs text-white/50 uppercase">Matchs</span>
-										<span class="text-title-md font-clash text-white">{selected.games ?? '-'}</span>
+										<span class="block text-xs text-white/50 uppercase mb-1">Matchs</span>
+										<span class="text-title-sm text-white">{selected.games ?? '-'}</span>
 									</div>
 									<div>
-										<span class="block text-xs text-white/50 uppercase">Pied fort</span>
-										<span class="text-title-md font-clash text-white capitalize"
-											>{selected.foot ?? '-'}</span
-										>
+										<span class="block text-xs text-white/50 uppercase mb-1">Pied fort</span>
+										<span class="text-title-sm text-white capitalize">{selected.foot ?? '-'}</span>
 									</div>
 									<div>
-										<span class="block text-xs text-white/50 uppercase">Taille</span>
-										<span class="text-title-md font-clash text-white"
+										<span class="block text-xs text-white/50 uppercase mb-1">Taille</span>
+										<span class="text-title-sm text-white"
 											>{selected.height ? `${selected.height} cm` : '-'}</span
 										>
 									</div>
