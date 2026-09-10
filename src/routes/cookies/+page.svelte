@@ -146,8 +146,8 @@
 				<h2 class="text-mobile-title-lg font-medium text-dark">Contact</h2>
 				<p class="text-mobile-body leading-relaxed">
 					Pour toute question concernant notre politique de cookies :<br />
-					<a href="mailto:as@royalebrussels.com" class="text-primary underline"
-						>as@royalebrussels.com</a
+					<a href="mailto:brussels@summitacademy-info.com" class="text-primary underline"
+						>brussels@summitacademy-info.com</a
 					>
 				</p>
 			</section>

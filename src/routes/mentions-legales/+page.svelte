@@ -32,13 +32,12 @@
 				<h2 class="text-mobile-title-lg font-medium text-dark">1. Éditeur du site</h2>
 				<p class="text-mobile-body leading-relaxed">
 					Le site asroyalebrussels.pages.dev est édité par <strong>Brussels Summit Academy</strong>,
-					[statut juridique à compléter — ex. ASBL, société].
+					ASBL.
 				</p>
 				<p class="text-mobile-body leading-relaxed">
-					<strong>Adresse :</strong> [adresse à compléter]<br />
 					<strong>Contact :</strong>
-					<a href="mailto:as@royalebrussels.com" class="text-primary underline"
-						>as@royalebrussels.com</a
+					<a href="mailto:brussels@summitacademy-info.com" class="text-primary underline"
+						>brussels@summitacademy-info.com</a
 					>
 				</p>
 			</section>

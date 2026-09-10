@@ -37,10 +37,10 @@
 			<section class="flex flex-col gap-3">
 				<h2 class="text-mobile-title-lg font-medium text-dark">1. Responsable du traitement</h2>
 				<p class="text-mobile-body leading-relaxed">
-					<strong>Brussels Summit Academy</strong>, [adresse à compléter].<br />
+					<strong>Brussels Summit Academy</strong><br />
 					Contact :
-					<a href="mailto:as@royalebrussels.com" class="text-primary underline"
-						>as@royalebrussels.com</a
+					<a href="mailto:brussels@summitacademy-info.com" class="text-primary underline"
+						>brussels@summitacademy-info.com</a
 					>
 				</p>
 			</section>
@@ -166,8 +166,8 @@
 				</ul>
 				<p class="text-mobile-body leading-relaxed">
 					Pour exercer ces droits :
-					<a href="mailto:as@royalebrussels.com" class="text-primary underline"
-						>as@royalebrussels.com</a
+					<a href="mailto:brussels@summitacademy-info.com" class="text-primary underline"
+						>brussels@summitacademy-info.com</a
 					><br />
 					Vous pouvez également introduire une réclamation auprès de l'
 					<a
