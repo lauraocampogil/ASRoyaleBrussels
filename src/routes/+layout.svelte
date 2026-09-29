@@ -2,8 +2,9 @@
 	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import '../app.css';
+	import { TalentDayPopup } from '$lib/components';
 
-	let { children } = $props();
+	let { children, data } = $props();
 
 	afterNavigate(() => {
 		if (page.url.pathname === '/' && window.location.hash) {
@@ -19,5 +20,7 @@
 		}
 	});
 </script>
+
+<TalentDayPopup {...data.talentDayPopup} />
 
 {@render children()}
