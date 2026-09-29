@@ -6,12 +6,23 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
 	const { data } = await res.json();
 
+	const talentDayActive = data?.talent_day_active ?? false;
+	const talentDayDate = data?.talent_day_date
+		? new Intl.DateTimeFormat('fr-BE', {
+				day: 'numeric',
+				month: 'long',
+				year: 'numeric'
+			}).format(new Date(data.talent_day_date))
+		: '';
+
 	return {
 		eyebrow: data?.eyebrow ?? '',
 		title: data?.title ?? '',
 		logo: data?.logo
 			? `${PUBLIC_DIRECTUS_URL}/assets/${data.logo}?width=160&quality=80&format=webp`
-			: ''
+			: '',
+		talentDayActive,
+		talentDayDate
 	};
 };
 

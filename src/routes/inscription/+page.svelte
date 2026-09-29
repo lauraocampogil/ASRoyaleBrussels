@@ -5,7 +5,12 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	let activeTab = $state<'talent_days' | 'academie'>('talent_days');
+	let activeTab = $state<'talent_days' | 'academie'>('academie');
+
+	$effect(() => {
+		activeTab = data.talentDayActive ? 'talent_days' : 'academie';
+	});
+
 	let submitting = $state(false);
 </script>
 
@@ -37,26 +42,34 @@
 			{/if}
 		</div>
 
-		<div class="mb-10 flex overflow-hidden rounded border border-dark">
-			<button
-				type="button"
-				onclick={() => (activeTab = 'talent_days')}
-				class="flex-1 py-3 text-button uppercase transition-colors {activeTab === 'talent_days'
-					? 'bg-primary text-white'
-					: 'bg-background text-dark'}"
-			>
-				Talent Days
-			</button>
-			<button
-				type="button"
-				onclick={() => (activeTab = 'academie')}
-				class="flex-1 py-3 text-button uppercase transition-colors {activeTab === 'academie'
-					? 'bg-primary text-white'
-					: 'bg-background text-dark'}"
-			>
-				Rejoindre l'académie
-			</button>
-		</div>
+		{#if data.talentDayActive}
+			<div class="mb-10 flex overflow-hidden rounded border border-dark">
+				<button
+					type="button"
+					onclick={() => (activeTab = 'talent_days')}
+					class="flex-1 py-3 text-button uppercase transition-colors {activeTab === 'talent_days'
+						? 'bg-primary text-white'
+						: 'bg-background text-dark'}"
+				>
+					Talent Days
+				</button>
+				<button
+					type="button"
+					onclick={() => (activeTab = 'academie')}
+					class="flex-1 py-3 text-button uppercase transition-colors {activeTab === 'academie'
+						? 'bg-primary text-white'
+						: 'bg-background text-dark'}"
+				>
+					Rejoindre l'académie
+				</button>
+			</div>
+
+			{#if activeTab === 'talent_days' && data.talentDayDate}
+				<p class="-mt-6 mb-8 text-center text-sm text-dark/60">
+					Prochaine session : <span class="font-semibold text-primary">{data.talentDayDate}</span>
+				</p>
+			{/if}
+		{/if}
 
 		{#if form?.success}
 			<div class="rounded border border-primary bg-primary/5 p-6 text-center">
