@@ -1,13 +1,13 @@
 import { json } from '@sveltejs/kit';
 import { PUBLIC_DIRECTUS_URL } from '$env/static/public';
-import { DIRECTUS_SERVICE_TOKEN, CRON_SECRET } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { sendTalentDayReminderEmail } from '$lib/server/email';
 import type { RequestHandler } from './$types';
 
-const authHeaders = { Authorization: `Bearer ${DIRECTUS_SERVICE_TOKEN}` };
+const authHeaders = { Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}` };
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
-	if (request.headers.get('x-cron-secret') !== CRON_SECRET) {
+	if (request.headers.get('x-cron-secret') !== env.CRON_SECRET) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}
 

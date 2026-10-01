@@ -1,6 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { PUBLIC_DIRECTUS_URL } from '$env/static/public';
-import { DIRECTUS_SERVICE_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { sendAcceptanceEmail } from '$lib/server/email';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -13,7 +13,7 @@ const REQUIRED_FIELDS: { key: string; label: string }[] = [
 	{ key: 'preferred_position', label: 'Poste préféré' }
 ];
 
-const authHeaders = { Authorization: `Bearer ${DIRECTUS_SERVICE_TOKEN}` };
+const authHeaders = { Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}` };
 
 export const load: PageServerLoad = async ({ fetch }) => {
 	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration?sort=-date_created&limit=-1`, {

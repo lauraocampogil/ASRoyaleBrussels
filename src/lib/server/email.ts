@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
-import { RESEND_API_KEY, RESEND_FROM } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
-const resend = new Resend(RESEND_API_KEY);
+const resend = new Resend(env.RESEND_API_KEY);
 
 export async function sendRegistrationConfirmationEmail(opts: {
 	to: string;
@@ -14,7 +14,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 			: "Confirmation de ton inscription à l'académie";
 
 	await resend.emails.send({
-		from: RESEND_FROM,
+		from: env.RESEND_FROM as string,
 		to: opts.to,
 		subject,
 		html: `
@@ -30,7 +30,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 
 export async function sendAcceptanceEmail(opts: { to: string; firstName: string }) {
 	await resend.emails.send({
-		from: RESEND_FROM,
+		from: env.RESEND_FROM as string,
 		to: opts.to,
 		subject: "Félicitations, tu es accepté(e) dans l'académie !",
 		html: `
@@ -44,11 +44,15 @@ export async function sendAcceptanceEmail(opts: { to: string; firstName: string 
 	});
 }
 
-export async function sendTalentDayReminderEmail(opts: { to: string; firstName: string; date: string }) {
+export async function sendTalentDayReminderEmail(opts: {
+	to: string;
+	firstName: string;
+	date: string;
+}) {
 	await resend.emails.send({
-		from: RESEND_FROM,
+		from: env.RESEND_FROM as string,
 		to: opts.to,
-		subject: 'Rappel : le Talent Day, c\'est demain !',
+		subject: "Rappel : le Talent Day, c'est demain !",
 		html: `
 			<div style="font-family: sans-serif; line-height:1.6;">
 				<h2>Salut ${opts.firstName},</h2>

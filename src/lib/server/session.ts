@@ -1,4 +1,4 @@
-import { ADMIN_SESSION_SECRET } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 function toHex(buffer: ArrayBuffer): string {
 	return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -7,7 +7,7 @@ function toHex(buffer: ArrayBuffer): string {
 async function sign(payload: string): Promise<string> {
 	const key = await crypto.subtle.importKey(
 		'raw',
-		new TextEncoder().encode(ADMIN_SESSION_SECRET),
+		new TextEncoder().encode(env.ADMIN_SESSION_SECRET),
 		{ name: 'HMAC', hash: 'SHA-256' },
 		false,
 		['sign']

@@ -1,11 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { STAFF_ACCOUNTS } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { createSessionCookie } from '$lib/server/session';
 import type { Actions } from './$types';
 
 function parseAccounts(): Record<string, string> {
 	const accounts: Record<string, string> = {};
-	for (const pair of STAFF_ACCOUNTS.split(',')) {
+	const raw = env.STAFF_ACCOUNTS ?? '';
+	for (const pair of raw.split(',')) {
 		const [email, password] = pair.split(':');
 		if (email && password) accounts[email.trim().toLowerCase()] = password.trim();
 	}
@@ -15,7 +16,9 @@ function parseAccounts(): Record<string, string> {
 export const actions: Actions = {
 	default: async ({ request, cookies }) => {
 		const data = await request.formData();
-		const email = String(data.get('email') ?? '').trim().toLowerCase();
+		const email = String(data.get('email') ?? '')
+			.trim()
+			.toLowerCase();
 		const password = String(data.get('password') ?? '').trim();
 
 		const accounts = parseAccounts();
