@@ -18,7 +18,7 @@ function getAuthHeaders() {
 }
 
 export const load: PageServerLoad = async ({ fetch }) => {
-	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration?sort=-date_created&limit=-1`, {
+	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration?sort=-id&limit=-1`, {
 		headers: getAuthHeaders()
 	});
 
