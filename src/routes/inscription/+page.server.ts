@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { PUBLIC_DIRECTUS_URL } from '$env/static/public';
 import type { Actions, PageServerLoad } from './$types';
+import { sendRegistrationConfirmationEmail } from '$lib/server/email';
 
 export const load: PageServerLoad = async ({ fetch }) => {
 	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
@@ -56,8 +57,11 @@ export const actions: Actions = {
 		const videoFile = data.get('highlight_video');
 
 		if (videoFile instanceof File && videoFile.size > 0) {
+			const arrayBuffer = await videoFile.arrayBuffer();
+			const fileBlob = new Blob([arrayBuffer], { type: videoFile.type });
+
 			const uploadForm = new FormData();
-			uploadForm.append('file', videoFile, videoFile.name);
+			uploadForm.append('file', fileBlob, videoFile.name);
 
 			const uploadRes = await fetch(`${PUBLIC_DIRECTUS_URL}/files`, {
 				method: 'POST',
@@ -65,6 +69,8 @@ export const actions: Actions = {
 			});
 
 			if (!uploadRes.ok) {
+				const errorBody = await uploadRes.json().catch(() => null);
+				console.error('Directus file upload failed:', uploadRes.status, JSON.stringify(errorBody));
 				return fail(500, { error: "L'envoi de la vidéo a échoué, réessaie.", values });
 			}
 
@@ -79,7 +85,20 @@ export const actions: Actions = {
 		});
 
 		if (!res.ok) {
+			const errorBody = await res.json().catch(() => null);
+			console.error('Directus Registration insert failed:', res.status, JSON.stringify(errorBody));
 			return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
+		}
+
+		const emailType = values.type === 'talent_days' ? 'talent_days' : 'academie';
+		try {
+			await sendRegistrationConfirmationEmail({
+				to: values.email,
+				firstName: values.first_name,
+				type: emailType
+			});
+		} catch (err) {
+			console.error('Confirmation email failed:', err);
 		}
 
 		return { success: true };

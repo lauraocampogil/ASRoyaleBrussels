@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import { Button } from '$lib/components';
 	import type { ActionData, PageData } from './$types';
 
@@ -8,7 +9,15 @@
 	let activeTab = $state<'talent_days' | 'academie'>('academie');
 
 	$effect(() => {
-		activeTab = data.talentDayActive ? 'talent_days' : 'academie';
+		const typeParam = page.url.searchParams.get('type');
+
+		if (!data.talentDayActive) {
+			activeTab = 'academie';
+		} else if (typeParam === 'academie' || typeParam === 'talent_days') {
+			activeTab = typeParam;
+		} else {
+			activeTab = 'talent_days';
+		}
 	});
 
 	let submitting = $state(false);
@@ -176,15 +185,17 @@
 					</label>
 				</div>
 
-				<label class="flex flex-col gap-2">
-					<span class="text-dark/70">Vidéo highlight (optionnel)</span>
-					<input
-						type="file"
-						name="highlight_video"
-						accept="video/*"
-						class="rounded-md border border-dark/30 px-4 py-3 file:mr-4 file:rounded file:border-0 file:bg-primary file:px-4 file:py-2 file:text-white"
-					/>
-				</label>
+				<!--
+<label class="flex flex-col gap-2">
+	<span class="text-dark/70">Vidéo highlight (optionnel)</span>
+	<input
+		type="file"
+		name="highlight_video"
+		accept="video/*"
+		class="rounded-md border border-dark/30 px-4 py-3 file:mr-4 file:rounded file:border-0 file:bg-primary file:px-4 file:py-2 file:text-white"
+	/>
+</label>
+-->
 
 				<label class="flex flex-col gap-2">
 					<span class="text-dark/70">Message (optionnel)</span>
