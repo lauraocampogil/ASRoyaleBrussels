@@ -10,7 +10,6 @@
 
 	$effect(() => {
 		const typeParam = page.url.searchParams.get('type');
-
 		if (!data.talentDayActive) {
 			activeTab = 'academie';
 		} else if (typeParam === 'academie' || typeParam === 'talent_days') {
@@ -21,6 +20,46 @@
 	});
 
 	let submitting = $state(false);
+
+	let idFrontPreview = $state<string | null>(null);
+	let idBackPreview = $state<string | null>(null);
+	let idFrontError = $state('');
+	let idBackError = $state('');
+
+	const MIN_DIMENSION = 600;
+
+	function handleIdCardChange(e: Event, side: 'front' | 'back') {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+
+		const setPreview =
+			side === 'front'
+				? (v: string | null) => (idFrontPreview = v)
+				: (v: string | null) => (idBackPreview = v);
+		const setError =
+			side === 'front' ? (v: string) => (idFrontError = v) : (v: string) => (idBackError = v);
+
+		setError('');
+
+		if (!file.type.startsWith('image/')) {
+			setPreview(null);
+			return;
+		}
+
+		const url = URL.createObjectURL(file);
+		setPreview(url);
+
+		const img = new Image();
+		img.onload = () => {
+			if (img.width < MIN_DIMENSION && img.height < MIN_DIMENSION) {
+				setError(
+					'Cette photo semble trop petite ou de mauvaise qualité — assure-toi que le texte soit bien net et lisible.'
+				);
+			}
+		};
+		img.src = url;
+	}
 </script>
 
 <section
@@ -100,6 +139,18 @@
 			>
 				<input type="hidden" name="type" value={activeTab} />
 
+				<div class="mb-4">
+					<span class="mb-2 block text-dark/70">Genre</span>
+					<div class="flex gap-4">
+						<label class="flex items-center gap-2 text-dark">
+							<input type="radio" name="gender" value="fille" required /> Femme
+						</label>
+						<label class="flex items-center gap-2 text-dark">
+							<input type="radio" name="gender" value="garcon" required /> Homme
+						</label>
+					</div>
+				</div>
+
 				<div class="grid grid-cols-1 gap-y-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-6">
 					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Prénom</span>
@@ -163,6 +214,38 @@
 						</select>
 					</label>
 
+					<div class="mb-4">
+						<label class="mb-1 block text-dark/70" for="current_club">Club actuel</label>
+						<input
+							id="current_club"
+							name="current_club"
+							type="text"
+							class="w-full rounded border border-dark-accent/30 px-4 py-3 text-sm text-dark"
+						/>
+					</div>
+
+					<div class="mb-4">
+						<label class="mb-1 block text-dark/70" for="division">Division</label>
+						<select
+							id="division"
+							name="division"
+							class="w-full rounded border border-dark-accent/30 px-4 py-3 text-dark"
+						>
+							<option value="">Sélectionne ta division</option>
+							<option value="nationale_1">Nationale 1</option>
+							<option value="nationale_2">Nationale 2</option>
+							<option value="nationale_3">Nationale 3</option>
+							<option value="provinciale_1">Provinciale 1</option>
+							<option value="provinciale_2">Provinciale 2</option>
+							<option value="provinciale_3">Provinciale 3</option>
+							<option value="provinciale_4">Provinciale 4</option>
+							<option value="regionale">Régionale</option>
+							<option value="u23">U23</option>
+							<option value="u18_elite">U18 Elite</option>
+							<option value="autre">Autre</option>
+						</select>
+					</div>
+
 					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Email</span>
 						<input
@@ -196,6 +279,56 @@
 	/>
 </label>
 -->
+
+				<div class="mb-4">
+					<label class="mb-1 block text-dark/70" for="id_card_front">Carte d'identité — Recto</label
+					>
+					<input
+						type="file"
+						id="id_card_front"
+						name="id_card_front"
+						accept="image/*,.pdf"
+						required
+						onchange={(e) => handleIdCardChange(e, 'front')}
+						class="w-full rounded border border-dark-accent/30 px-4 py-3 text-dark"
+					/>
+					<p class="mt-1 text-xs text-dark-accent">
+						Photo ou scan net et lisible, obligatoire pour ton inscription.
+					</p>
+					{#if idFrontPreview}
+						<img
+							src={idFrontPreview}
+							alt="Aperçu recto"
+							class="mt-2 h-32 w-auto rounded border border-dark-accent/20 object-contain"
+						/>
+					{/if}
+					{#if idFrontError}
+						<p class="mt-1 text-xs text-red-600">{idFrontError}</p>
+					{/if}
+				</div>
+
+				<div class="mb-6">
+					<label class="mb-1 block text-dark/70" for="id_card_back">Carte d'identité — Verso</label>
+					<input
+						type="file"
+						id="id_card_back"
+						name="id_card_back"
+						accept="image/*,.pdf"
+						required
+						onchange={(e) => handleIdCardChange(e, 'back')}
+						class="w-full rounded border border-dark-accent/30 px-4 py-3 text-dark"
+					/>
+					{#if idBackPreview}
+						<img
+							src={idBackPreview}
+							alt="Aperçu verso"
+							class="mt-2 h-32 w-auto rounded border border-dark-accent/20 object-contain"
+						/>
+					{/if}
+					{#if idBackError}
+						<p class="mt-1 text-xs text-red-600">{idBackError}</p>
+					{/if}
+				</div>
 
 				<label class="flex flex-col gap-2">
 					<span class="text-dark/70">Message (optionnel)</span>

@@ -69,3 +69,20 @@ export async function sendTalentDayReminderEmail(opts: {
 		`
 	});
 }
+
+export async function sendRejectionEmail(opts: { to: string; firstName: string }) {
+	await getResend().emails.send({
+		from: env.RESEND_FROM as string,
+		to: opts.to,
+		subject: 'Réponse à ta candidature — Brussels Summit Academy',
+		html: `
+			<div style="font-family: sans-serif; line-height:1.6;">
+				<h2>Bonjour ${opts.firstName},</h2>
+				<p>Nous te remercions pour ta candidature et l'intérêt porté à Brussels Summit Academy.</p>
+				<p>Malheureusement, nous ne sommes pas en mesure de donner une suite favorable à ta candidature pour le moment.</p>
+				<p>Nous t'encourageons à retenter ta chance lors d'une prochaine session.</p>
+				<p>Cordialement,<br/>L'équipe Brussels Summit Academy</p>
+			</div>
+		`
+	});
+}

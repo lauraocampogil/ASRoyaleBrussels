@@ -7,7 +7,10 @@
 	let showPassword = $state(false);
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-dark px-5">
+<div
+	class="relative flex min-h-screen items-center justify-center bg-dark px-5"
+	style="background-image: linear-gradient(rgba(10,10,10,0.75), rgba(10,10,10,0.85)), url('/images/academy-background.jpg'); background-size: cover; background-position: center;"
+>
 	<form
 		method="POST"
 		use:enhance={() => {
@@ -17,9 +20,11 @@
 				submitting = false;
 			};
 		}}
-		class="w-full max-w-sm rounded-lg bg-background p-8"
+		class="w-full max-w-sm rounded-2xl bg-background p-8"
 	>
-		<h1 class="font-clash mb-6 text-2xl text-dark">Espace staff</h1>
+		<img src="/images/logo.svg" alt="Brussels Summit Academy" class="mx-auto mb-6 h-14 w-auto" />
+
+		<h1 class="font-clash mb-6 text-center text-2xl text-dark">Espace staff</h1>
 
 		{#if form?.error}
 			<p class="mb-4 rounded bg-red-100 px-3 py-2 text-sm text-red-700">{form.error}</p>
