@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { Tagline } from '$lib/components';
 	import { reveal } from '$lib/actions/reveal';
+	import { scrollNormalizer } from '$lib/stores/scrollNormalizer';
 
 	let { eyebrow, title, description, players = [] }: any = $props();
 
@@ -104,13 +105,31 @@
 		if (e.key === 'Escape') closeModal();
 	}
 
+	function preventTouchMove(e: TouchEvent) {
+		e.preventDefault();
+	}
+
+	function preventScroll(e: Event) {
+		e.preventDefault();
+	}
+
 	$effect(() => {
-		document.documentElement.style.overflow = modalOpen ? 'hidden' : '';
-		document.body.style.overflow = modalOpen ? 'hidden' : '';
+		const normalizer = $scrollNormalizer;
+
+		if (modalOpen) {
+			document.documentElement.style.overflow = 'hidden';
+			document.body.style.overflow = 'hidden';
+			normalizer?.disable();
+		} else {
+			document.documentElement.style.overflow = '';
+			document.body.style.overflow = '';
+			normalizer?.enable();
+		}
 
 		return () => {
 			document.documentElement.style.overflow = '';
 			document.body.style.overflow = '';
+			normalizer?.enable();
 		};
 	});
 </script>

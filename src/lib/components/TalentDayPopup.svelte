@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { fade, fly } from 'svelte/transition';
+	import { scrollNormalizer } from '$lib/stores/scrollNormalizer';
 
 	let {
 		active = false,
@@ -39,23 +40,22 @@
 	}
 
 	$effect(() => {
+		const normalizer = $scrollNormalizer;
+
 		if (visible) {
 			document.documentElement.style.overflow = 'hidden';
 			document.body.style.overflow = 'hidden';
-			document.addEventListener('touchmove', preventScroll, { passive: false });
-			document.addEventListener('wheel', preventScroll, { passive: false });
+			normalizer?.disable();
 		} else {
 			document.documentElement.style.overflow = '';
 			document.body.style.overflow = '';
-			document.removeEventListener('touchmove', preventScroll);
-			document.removeEventListener('wheel', preventScroll);
+			normalizer?.enable();
 		}
 
 		return () => {
 			document.documentElement.style.overflow = '';
 			document.body.style.overflow = '';
-			document.removeEventListener('touchmove', preventScroll);
-			document.removeEventListener('wheel', preventScroll);
+			normalizer?.enable();
 		};
 	});
 
