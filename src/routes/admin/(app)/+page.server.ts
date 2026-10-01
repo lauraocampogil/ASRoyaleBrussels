@@ -18,6 +18,13 @@ function getAuthHeaders() {
 }
 
 export const load: PageServerLoad = async ({ fetch }) => {
+	console.log(
+		'Token debug — longueur:',
+		env.DIRECTUS_SERVICE_TOKEN?.length,
+		'— début:',
+		env.DIRECTUS_SERVICE_TOKEN?.slice(0, 6)
+	);
+
 	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration?sort=-id&limit=-1`, {
 		headers: getAuthHeaders()
 	});
