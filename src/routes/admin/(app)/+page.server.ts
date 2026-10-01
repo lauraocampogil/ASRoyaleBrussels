@@ -13,12 +13,21 @@ const REQUIRED_FIELDS: { key: string; label: string }[] = [
 	{ key: 'preferred_position', label: 'Poste préféré' }
 ];
 
-const authHeaders = { Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}` };
+function getAuthHeaders() {
+	return { Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}` };
+}
 
 export const load: PageServerLoad = async ({ fetch }) => {
 	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration?sort=-date_created&limit=-1`, {
-		headers: authHeaders
+		headers: getAuthHeaders()
 	});
+
+	if (!res.ok) {
+		const errorBody = await res.json().catch(() => null);
+		console.error('Directus Registration fetch failed:', res.status, JSON.stringify(errorBody));
+		return { players: [], loadError: true };
+	}
+
 	const { data: registrations } = await res.json();
 
 	const players = (registrations ?? []).map((r: Record<string, any>) => {
@@ -26,7 +35,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
 		return { ...r, missing, complete: missing.length === 0 };
 	});
 
-	return { players };
+	return { players, loadError: false };
 };
 
 export const actions: Actions = {
@@ -37,11 +46,13 @@ export const actions: Actions = {
 
 		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
 			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json', ...authHeaders },
+			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
 			body: JSON.stringify({ accepted, accepted_at: accepted ? new Date().toISOString() : null })
 		});
 
 		if (!res.ok) {
+			const errorBody = await res.json().catch(() => null);
+			console.error('Directus Registration update failed:', res.status, JSON.stringify(errorBody));
 			return fail(500, { error: 'La mise à jour a échoué.' });
 		}
 

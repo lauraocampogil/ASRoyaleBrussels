@@ -22,6 +22,7 @@ export const actions: Actions = {
 		const password = String(data.get('password') ?? '').trim();
 
 		const accounts = parseAccounts();
+		console.log('Comptes staff reconnus:', Object.keys(accounts));
 
 		if (!accounts[email] || accounts[email] !== password) {
 			return fail(401, { error: 'Email ou mot de passe incorrect.' });

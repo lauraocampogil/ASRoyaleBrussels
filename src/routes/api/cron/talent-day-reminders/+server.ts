@@ -4,7 +4,9 @@ import { env } from '$env/dynamic/private';
 import { sendTalentDayReminderEmail } from '$lib/server/email';
 import type { RequestHandler } from './$types';
 
-const authHeaders = { Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}` };
+function getAuthHeaders() {
+	return { Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}` };
+}
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
 	if (request.headers.get('x-cron-secret') !== env.CRON_SECRET) {
@@ -12,8 +14,19 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 	}
 
 	const textRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`, {
-		headers: authHeaders
+		headers: getAuthHeaders()
 	});
+
+	if (!textRes.ok) {
+		const errorBody = await textRes.json().catch(() => null);
+		console.error(
+			'Directus RegistrationText fetch failed:',
+			textRes.status,
+			JSON.stringify(errorBody)
+		);
+		return json({ sent: 0, reason: 'Erreur lecture RegistrationText.' }, { status: 500 });
+	}
+
 	const { data: settings } = await textRes.json();
 
 	if (!settings?.talent_day_active || !settings?.talent_day_date) {
@@ -30,8 +43,15 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
 	const regRes = await fetch(
 		`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[type][_eq]=talent_days&filter[reminder_sent][_neq]=true`,
-		{ headers: authHeaders }
+		{ headers: getAuthHeaders() }
 	);
+
+	if (!regRes.ok) {
+		const errorBody = await regRes.json().catch(() => null);
+		console.error('Directus Registration fetch failed:', regRes.status, JSON.stringify(errorBody));
+		return json({ sent: 0, reason: 'Erreur lecture Registration.' }, { status: 500 });
+	}
+
 	const { data: registrations } = await regRes.json();
 
 	const dateLabel = new Intl.DateTimeFormat('fr-BE', {
@@ -50,7 +70,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			});
 			await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${player.id}`, {
 				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json', ...authHeaders },
+				headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
 				body: JSON.stringify({ reminder_sent: true })
 			});
 			sent++;

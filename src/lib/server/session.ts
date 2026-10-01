@@ -25,7 +25,12 @@ export async function createSessionCookie(email: string): Promise<string> {
 
 export async function verifySessionCookie(token: string | undefined): Promise<string | null> {
 	if (!token) return null;
-	const [payload, signature] = token.split('.');
+
+	const lastDotIndex = token.lastIndexOf('.');
+	if (lastDotIndex === -1) return null;
+
+	const payload = token.slice(0, lastDotIndex);
+	const signature = token.slice(lastDotIndex + 1);
 	if (!payload || !signature) return null;
 
 	const expectedSignature = await sign(payload);
