@@ -1,7 +1,14 @@
 import { Resend } from 'resend';
 import { env } from '$env/dynamic/private';
 
-const resend = new Resend(env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+
+function getResend(): Resend {
+	if (!resendClient) {
+		resendClient = new Resend(env.RESEND_API_KEY);
+	}
+	return resendClient;
+}
 
 export async function sendRegistrationConfirmationEmail(opts: {
 	to: string;
@@ -13,7 +20,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 			? 'Confirmation de ton inscription au Talent Day'
 			: "Confirmation de ton inscription à l'académie";
 
-	await resend.emails.send({
+	await getResend().emails.send({
 		from: env.RESEND_FROM as string,
 		to: opts.to,
 		subject,
@@ -29,7 +36,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 }
 
 export async function sendAcceptanceEmail(opts: { to: string; firstName: string }) {
-	await resend.emails.send({
+	await getResend().emails.send({
 		from: env.RESEND_FROM as string,
 		to: opts.to,
 		subject: "Félicitations, tu es accepté(e) dans l'académie !",
@@ -49,7 +56,7 @@ export async function sendTalentDayReminderEmail(opts: {
 	firstName: string;
 	date: string;
 }) {
-	await resend.emails.send({
+	await getResend().emails.send({
 		from: env.RESEND_FROM as string,
 		to: opts.to,
 		subject: "Rappel : le Talent Day, c'est demain !",
