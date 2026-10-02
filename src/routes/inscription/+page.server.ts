@@ -9,11 +9,9 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 	const talentDayActive = data?.talent_day_active ?? false;
 	const talentDayDate = data?.talent_day_date
-		? new Intl.DateTimeFormat('fr-BE', {
-				day: 'numeric',
-				month: 'long',
-				year: 'numeric'
-			}).format(new Date(data.talent_day_date))
+		? new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' }).format(
+				new Date(data.talent_day_date)
+			)
 		: '';
 
 	return {
@@ -146,12 +144,36 @@ export const actions: Actions = {
 			return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
 		}
 
+		let talentDayDate = '';
+		if (values.type === 'talent_days') {
+			const textRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
+			const { data: settings } = await textRes.json();
+			talentDayDate = settings?.talent_day_date
+				? new Intl.DateTimeFormat('fr-BE', {
+						day: 'numeric',
+						month: 'long',
+						year: 'numeric'
+					}).format(new Date(settings.talent_day_date))
+				: '';
+		}
+
 		const emailType = values.type === 'talent_days' ? 'talent_days' : 'academie';
 		try {
 			await sendRegistrationConfirmationEmail({
 				to: values.email,
 				firstName: values.first_name,
-				type: emailType
+				type: emailType,
+				talentDayDate: talentDayDate || undefined
+			});
+		} catch (err) {
+			console.error('Confirmation email failed:', err);
+		}
+		try {
+			await sendRegistrationConfirmationEmail({
+				to: values.email,
+				firstName: values.first_name,
+				type: emailType,
+				talentDayDate: talentDayDate || undefined
 			});
 		} catch (err) {
 			console.error('Confirmation email failed:', err);
