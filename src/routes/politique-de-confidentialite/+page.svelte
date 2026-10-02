@@ -1,12 +1,13 @@
 <script lang="ts">
 	import '../../app.css';
+	import { Seo } from '$lib/components';
 </script>
 
-<svelte:head>
-	<title>Politique de Confidentialité</title>
-	<meta name="description" content="Politique de confidentialité de Brussels Summit Academy." />
-	<meta name="robots" content="noindex" />
-</svelte:head>
+<Seo
+	title="Politique de confidentialité"
+	description="Politique de confidentialité de Brussels Summit Academy : comment tes données personnelles sont collectées, utilisées et protégées."
+	noindex
+/>
 
 <main class="min-h-screen bg-background px-5 sm:px-8 md:px-10 lg:px-12 py-16 xl:px-20 xl:py-24">
 	<div class="mx-auto w-full" style="max-width: 48rem;">

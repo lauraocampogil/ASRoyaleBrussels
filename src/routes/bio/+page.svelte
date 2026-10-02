@@ -4,6 +4,7 @@
 	import { Button, Tagline, DotGrid } from '$lib/components';
 	import { reveal } from '$lib/actions/reveal';
 	import type { PageData } from './$types';
+	import { Seo } from '$lib/components';
 
 	let { data }: { data: PageData } = $props();
 
@@ -52,13 +53,10 @@
 	});
 </script>
 
-<svelte:head>
-	<title>Bio — Brussels Summit Academy</title>
-	<meta
-		name="description"
-		content="Brussels Summit Academy — vision, mission et valeurs de notre centre de détection et de développement des talents du football."
-	/>
-</svelte:head>
+<Seo
+	title="Bio"
+	description="Brussels Summit Academy — vision, mission et valeurs de notre centre de détection et de développement des talents du football."
+/>
 
 <Header {...data.header} />
 

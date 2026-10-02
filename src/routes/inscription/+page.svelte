@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { Button } from '$lib/components';
 	import type { ActionData, PageData } from './$types';
+	import { Seo } from '$lib/components';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -61,6 +62,11 @@
 		img.src = url;
 	}
 </script>
+
+<Seo
+	title="Inscription"
+	description="Inscris-toi au Talent Day ou rejoins l'académie Brussels Summit Academy."
+/>
 
 <section
 	class="grid-section sm-grid-section relative flex min-h-screen items-center justify-center bg-background px-5 py-16 sm:px-8 sm:py-20 md:px-10 md:py-24 lg:px-12 3xl:container 3xl:mx-auto"

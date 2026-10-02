@@ -1,8 +1,12 @@
-<svelte:head>
-	<title>Politique de Cookies</title>
-	<meta name="description" content="Politique de cookies de Brussels Summit Academy." />
-	<meta name="robots" content="noindex" />
-</svelte:head>
+<script lang="ts">
+	import { Seo } from '$lib/components';
+</script>
+
+<Seo
+	title="Politique de cookies"
+	description="Informations sur l'utilisation des cookies sur le site de Brussels Summit Academy."
+	noindex
+/>
 
 <main class="min-h-screen bg-background px-5 sm:px-8 md:px-10 lg:px-12 py-16 xl:px-20 xl:py-24">
 	<div class="mx-auto w-full" style="max-width: 48rem;">
