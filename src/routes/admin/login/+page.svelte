@@ -20,7 +20,7 @@
 				submitting = false;
 			};
 		}}
-		class="w-full max-w-sm rounded-2xl bg-background p-8"
+		class="w-full max-w-sm rounded-2xl bg-background p-6 sm:p-8"
 	>
 		<img src="/images/logo.svg" alt="Brussels Summit Academy" class="mx-auto mb-6 h-14 w-auto" />
 

@@ -168,6 +168,7 @@
 	<form
 		method="POST"
 		action="?/updatePlayer"
+		enctype="multipart/form-data"
 		use:enhance={() => {
 			return async ({ update }) => {
 				await update();
@@ -193,6 +194,18 @@
 				value={player.last_name}
 				class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
 			/>
+		</label>
+		<label class="text-xs text-dark-accent">
+			Genre
+			<select
+				name="gender"
+				value={player.gender ?? ''}
+				class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+			>
+				<option value="">—</option>
+				<option value="fille">Femme</option>
+				<option value="garcon">Homme</option>
+			</select>
 		</label>
 		<label class="text-xs text-dark-accent">
 			Date de naissance
@@ -236,7 +249,7 @@
 				class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
 			/>
 		</label>
-		<label class="text-xs text-dark-accent">
+		<label class="text-xs text-dark-accent sm:col-span-2">
 			Division
 			<select
 				name="division"
@@ -247,6 +260,31 @@
 					<option value={option.value}>{option.label}</option>
 				{/each}
 			</select>
+		</label>
+
+		<label class="text-xs text-dark-accent">
+			Carte d'identité — Recto
+			<span class="ml-1 {player.id_card_front ? 'text-green-600' : 'text-red-600'}">
+				{player.id_card_front ? '(fournie)' : '(manquante)'}
+			</span>
+			<input
+				type="file"
+				name="id_card_front"
+				accept="image/*,.pdf"
+				class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+			/>
+		</label>
+		<label class="text-xs text-dark-accent">
+			Carte d'identité — Verso
+			<span class="ml-1 {player.id_card_back ? 'text-green-600' : 'text-red-600'}">
+				{player.id_card_back ? '(fournie)' : '(manquante)'}
+			</span>
+			<input
+				type="file"
+				name="id_card_back"
+				accept="image/*,.pdf"
+				class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+			/>
 		</label>
 
 		<div class="flex gap-2 sm:col-span-2">
@@ -271,7 +309,9 @@
 		<h1 class="font-clash mb-4 text-xl text-dark sm:text-2xl">Vue d'ensemble</h1>
 
 		{#if data.talentDay && talentDayDaysLeft !== null}
-			<div class="mb-4 flex items-center justify-between rounded-2xl bg-secondary p-5 shadow-sm">
+			<div
+				class="mb-4 flex flex-col gap-2 rounded-2xl bg-secondary p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+			>
 				<div>
 					<p class="text-xs font-medium text-dark/70">Talent Day</p>
 					<p class="font-clash text-lg text-dark">
@@ -585,35 +625,35 @@
 					<thead class="bg-[#f4f5f7] print:bg-transparent">
 						<tr>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 								>Nom</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 								>Genre</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 								>Naissance</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 								>Poste</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 								>Club</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 								>Division</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 								>Téléphone</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 								>Email</th
 							>
 							<th
@@ -621,11 +661,11 @@
 								>Complétude</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 								>Statut</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:hidden"
 								>Carte ID</th
 							>
 							<th class="whitespace-nowrap px-5 py-4 print:hidden"></th>
@@ -634,33 +674,46 @@
 					<tbody>
 						{#each filteredPlayers as player (player.id)}
 							<tr class="border-t border-dark-accent/10 transition-colors hover:bg-[#f4f5f7]/60">
-								<td class="whitespace-nowrap px-5 py-4">
+								<td
+									class="whitespace-nowrap px-5 py-4 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+								>
 									<div class="flex items-center gap-3">
 										<span
-											class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
+											class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary print:hidden"
 										>
 											{initials(player)}
 										</span>
 										<span class="text-dark">{player.first_name} {player.last_name}</span>
 									</div>
 								</td>
-								<td class="whitespace-nowrap px-5 py-4 text-dark-accent"
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 									>{genderLabel(player.gender)}</td
 								>
-								<td class="whitespace-nowrap px-5 py-4 text-dark-accent"
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 									>{formatDate(player.birth_date)}</td
 								>
-								<td class="whitespace-nowrap px-5 py-4 text-dark-accent"
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 									>{player.preferred_position ?? '—'}</td
 								>
-								<td class="whitespace-nowrap px-5 py-4 text-dark-accent"
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 									>{player.current_club ?? '—'}</td
 								>
-								<td class="whitespace-nowrap px-5 py-4 text-dark-accent"
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
 									>{divisionLabel(player.division)}</td
 								>
-								<td class="whitespace-nowrap px-5 py-4 text-dark-accent">{player.phone ?? '—'}</td>
-								<td class="whitespace-nowrap px-5 py-4 text-dark-accent">{player.email}</td>
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+									>{player.phone ?? '—'}</td
+								>
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+									>{player.email}</td
+								>
 								<td class="px-5 py-4 print:hidden">
 									{#if player.complete}
 										<span class="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700"
@@ -675,8 +728,11 @@
 										</span>
 									{/if}
 								</td>
-								<td class="px-5 py-4">{@render statusSelect(player)}</td>
-								<td class="px-5 py-4">{@render idCardButtons(player)}</td>
+								<td
+									class="px-5 py-4 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+									>{@render statusSelect(player)}</td
+								>
+								<td class="px-5 py-4 print:hidden">{@render idCardButtons(player)}</td>
 								<td class="px-5 py-4 print:hidden">
 									<button
 										type="button"
@@ -699,3 +755,12 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	@media print {
+		@page {
+			size: landscape;
+			margin: 1cm;
+		}
+	}
+</style>

@@ -220,7 +220,7 @@
 							id="current_club"
 							name="current_club"
 							type="text"
-							class="w-full rounded border border-dark-accent/30 px-4 py-3 text-sm text-dark"
+							class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
 						/>
 					</div>
 
@@ -229,7 +229,7 @@
 						<select
 							id="division"
 							name="division"
-							class="w-full rounded border border-dark-accent/30 px-4 py-3 text-dark"
+							class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
 						>
 							<option value="">Sélectionne ta division</option>
 							<option value="nationale_1">Nationale 1</option>
@@ -290,7 +290,7 @@
 						accept="image/*,.pdf"
 						required
 						onchange={(e) => handleIdCardChange(e, 'front')}
-						class="w-full rounded border border-dark-accent/30 px-4 py-3 text-dark"
+						class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
 					/>
 					<p class="mt-1 text-xs text-dark-accent">
 						Photo ou scan net et lisible, obligatoire pour ton inscription.
@@ -316,7 +316,7 @@
 						accept="image/*,.pdf"
 						required
 						onchange={(e) => handleIdCardChange(e, 'back')}
-						class="w-full rounded border border-dark-accent/30 px-4 py-3 text-dark"
+						class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
 					/>
 					{#if idBackPreview}
 						<img

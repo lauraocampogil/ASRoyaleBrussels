@@ -4,6 +4,28 @@ import { env } from '$env/dynamic/private';
 import { sendAcceptanceEmail, sendRejectionEmail } from '$lib/server/email';
 import type { Actions, PageServerLoad } from './$types';
 
+async function uploadFile(file: File, fetchFn: typeof fetch): Promise<string> {
+	const arrayBuffer = await file.arrayBuffer();
+	const fileBlob = new Blob([arrayBuffer], { type: file.type });
+	const uploadForm = new FormData();
+	uploadForm.append('file', fileBlob, file.name);
+
+	const uploadRes = await fetchFn(`${PUBLIC_DIRECTUS_URL}/files`, {
+		method: 'POST',
+		body: uploadForm,
+		headers: getAuthHeaders()
+	});
+
+	if (!uploadRes.ok) {
+		const errorBody = await uploadRes.json().catch(() => null);
+		console.error('ID card upload failed:', uploadRes.status, JSON.stringify(errorBody));
+		throw new Error('upload_failed');
+	}
+
+	const uploaded = await uploadRes.json();
+	return uploaded.data.id;
+}
+
 function getAuthHeaders() {
 	return { Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}` };
 }
@@ -100,16 +122,35 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const id = data.get('id');
 
-		const payload = {
+		const payload: Record<string, any> = {
 			first_name: String(data.get('first_name') ?? ''),
 			last_name: String(data.get('last_name') ?? ''),
 			birth_date: String(data.get('birth_date') ?? ''),
+			gender: String(data.get('gender') ?? ''),
 			phone: String(data.get('phone') ?? ''),
 			preferred_position: String(data.get('preferred_position') ?? ''),
 			current_club: String(data.get('current_club') ?? ''),
 			division: String(data.get('division') ?? ''),
 			email: String(data.get('email') ?? '')
 		};
+
+		const idFront = data.get('id_card_front');
+		if (idFront instanceof File && idFront.size > 0) {
+			try {
+				payload.id_card_front = await uploadFile(idFront, fetch);
+			} catch {
+				return fail(500, { error: "L'envoi du recto a échoué." });
+			}
+		}
+
+		const idBack = data.get('id_card_back');
+		if (idBack instanceof File && idBack.size > 0) {
+			try {
+				payload.id_card_back = await uploadFile(idBack, fetch);
+			} catch {
+				return fail(500, { error: "L'envoi du verso a échoué." });
+			}
+		}
 
 		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
 			method: 'PATCH',
