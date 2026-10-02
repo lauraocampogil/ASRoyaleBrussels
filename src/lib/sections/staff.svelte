@@ -3,6 +3,7 @@
 	import { reveal } from '$lib/actions/reveal';
 
 	let { eyebrow, title, description, staff = [] }: any = $props();
+	let visibleStaff = $derived(staff.filter((member: any) => member.image));
 </script>
 
 <section
@@ -28,7 +29,7 @@
 		use:reveal={{ stagger: 0.1 }}
 		class="col-span-8 mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:mt-10 sm:gap-x-6 sm:gap-y-10 md:mt-14 md:grid-cols-4 md:gap-y-12"
 	>
-		{#each staff as member}
+		{#each visibleStaff as member}
 			<div class="flex flex-col">
 				<div class="group relative aspect-3/4 w-full overflow-hidden rounded-lg bg-dark-accent/20">
 					{#if member.image}
