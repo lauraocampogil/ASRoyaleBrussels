@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/state';
+
 	const SITE_NAME = 'Brussels Summit Academy';
 	const SITE_URL = 'https://brussels-summitacademy.be';
 	const DEFAULT_DESCRIPTION =
@@ -8,21 +10,19 @@
 	let {
 		title,
 		description = DEFAULT_DESCRIPTION,
-		path = '',
 		image = DEFAULT_IMAGE,
 		type = 'website',
 		noindex = false
 	}: {
 		title: string;
 		description?: string;
-		path?: string;
 		image?: string;
 		type?: string;
 		noindex?: boolean;
 	} = $props();
 
 	let fullTitle = $derived(title ? `${title} | ${SITE_NAME}` : SITE_NAME);
-	let canonical = $derived(`${SITE_URL}${path}`);
+	let canonical = $derived(`${SITE_URL}${page.url.pathname}`);
 </script>
 
 <svelte:head>
