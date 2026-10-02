@@ -172,6 +172,27 @@
 					</label>
 
 					<label class="flex flex-col gap-2">
+						<span class="text-dark/70">Email</span>
+						<input
+							type="email"
+							name="email"
+							required
+							value={form?.values?.email ?? ''}
+							class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+						/>
+					</label>
+					<label class="flex flex-col gap-2">
+						<span class="text-dark/70">Téléphone</span>
+						<input
+							type="tel"
+							name="phone"
+							required
+							value={form?.values?.phone ?? ''}
+							class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+						/>
+					</label>
+
+					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Date de naissance</span>
 						<input
 							type="date"
@@ -181,6 +202,77 @@
 							class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
 						/>
 					</label>
+					{#if activeTab === 'academie'}
+						<label class="flex flex-col gap-2">
+							<span class="text-dark/70">Lieu de naissance</span>
+							<input
+								name="birth_place"
+								required
+								value={form?.values?.birth_place ?? ''}
+								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+							/>
+						</label>
+						<label class="flex flex-col gap-2">
+							<span class="text-dark/70">Nationalité</span>
+							<input
+								name="nationality"
+								required
+								value={form?.values?.nationality ?? ''}
+								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+							/>
+						</label>
+
+						<label class="flex flex-col gap-2 sm:col-span-2">
+							<span class="text-dark/70">Adresse postale</span>
+							<input
+								name="address"
+								required
+								value={form?.values?.address ?? ''}
+								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+							/>
+						</label>
+						<label class="flex flex-col gap-2">
+							<span class="text-dark/70">Code postal</span>
+							<input
+								name="postal_code"
+								required
+								value={form?.values?.postal_code ?? ''}
+								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+							/>
+						</label>
+
+						<div class="mb-4">
+							<label class="mb-1 block text-dark/70" for="current_club">Club actuel</label>
+							<input
+								id="current_club"
+								name="current_club"
+								type="text"
+								class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
+							/>
+						</div>
+
+						<div class="mb-4">
+							<label class="mb-1 block text-dark/70" for="division">Division</label>
+							<select
+								id="division"
+								name="division"
+								class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
+							>
+								<option value="">Sélectionne ta division</option>
+								<option value="nationale_1">Nationale 1</option>
+								<option value="nationale_2">Nationale 2</option>
+								<option value="nationale_3">Nationale 3</option>
+								<option value="provinciale_1">Provinciale 1</option>
+								<option value="provinciale_2">Provinciale 2</option>
+								<option value="provinciale_3">Provinciale 3</option>
+								<option value="provinciale_4">Provinciale 4</option>
+								<option value="regionale">Régionale</option>
+								<option value="u23">U23</option>
+								<option value="u18_elite">U18 Elite</option>
+								<option value="autre">Autre</option>
+							</select>
+						</div>
+					{/if}
 					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Poste préféré</span>
 						<select
@@ -213,72 +305,7 @@
 							</optgroup>
 						</select>
 					</label>
-
-					<div class="mb-4">
-						<label class="mb-1 block text-dark/70" for="current_club">Club actuel</label>
-						<input
-							id="current_club"
-							name="current_club"
-							type="text"
-							class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
-						/>
-					</div>
-
-					<div class="mb-4">
-						<label class="mb-1 block text-dark/70" for="division">Division</label>
-						<select
-							id="division"
-							name="division"
-							class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
-						>
-							<option value="">Sélectionne ta division</option>
-							<option value="nationale_1">Nationale 1</option>
-							<option value="nationale_2">Nationale 2</option>
-							<option value="nationale_3">Nationale 3</option>
-							<option value="provinciale_1">Provinciale 1</option>
-							<option value="provinciale_2">Provinciale 2</option>
-							<option value="provinciale_3">Provinciale 3</option>
-							<option value="provinciale_4">Provinciale 4</option>
-							<option value="regionale">Régionale</option>
-							<option value="u23">U23</option>
-							<option value="u18_elite">U18 Elite</option>
-							<option value="autre">Autre</option>
-						</select>
-					</div>
-
-					<label class="flex flex-col gap-2">
-						<span class="text-dark/70">Email</span>
-						<input
-							type="email"
-							name="email"
-							required
-							value={form?.values?.email ?? ''}
-							class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-						/>
-					</label>
-					<label class="flex flex-col gap-2">
-						<span class="text-dark/70">Téléphone</span>
-						<input
-							type="tel"
-							name="phone"
-							required
-							value={form?.values?.phone ?? ''}
-							class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-						/>
-					</label>
 				</div>
-
-				<!--
-<label class="flex flex-col gap-2">
-	<span class="text-dark/70">Vidéo highlight (optionnel)</span>
-	<input
-		type="file"
-		name="highlight_video"
-		accept="video/*"
-		class="rounded-md border border-dark/30 px-4 py-3 file:mr-4 file:rounded file:border-0 file:bg-primary file:px-4 file:py-2 file:text-white"
-	/>
-</label>
--->
 
 				<div class="mb-4">
 					<label class="mb-1 block text-dark/70" for="id_card_front">Carte d'identité — Recto</label
@@ -329,16 +356,6 @@
 						<p class="mt-1 text-xs text-red-600">{idBackError}</p>
 					{/if}
 				</div>
-
-				<label class="flex flex-col gap-2">
-					<span class="text-dark/70">Message (optionnel)</span>
-					<textarea
-						name="message"
-						rows="4"
-						value={form?.values?.message ?? ''}
-						class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-					></textarea>
-				</label>
 
 				{#if form?.error}
 					<p class="text-sm text-red-600">{form.error}</p>

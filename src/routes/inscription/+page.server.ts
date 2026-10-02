@@ -53,20 +53,27 @@ export const actions: Actions = {
 	default: async ({ request, fetch }) => {
 		const data = await request.formData();
 
+		const type = data.get('type')?.toString() ?? '';
+		const isAcademie = type === 'academie';
+
 		const values = {
-			type: data.get('type')?.toString() ?? '',
+			type,
 			first_name: data.get('first_name')?.toString() ?? '',
 			last_name: data.get('last_name')?.toString() ?? '',
 			birth_date: data.get('birth_date')?.toString() ?? '',
 			gender: data.get('gender')?.toString() ?? '',
 			preferred_position: data.get('preferred_position')?.toString() ?? '',
+			birth_place: data.get('birth_place')?.toString() || null,
+			nationality: data.get('nationality')?.toString() || null,
+			address: data.get('address')?.toString() || null,
+			postal_code: data.get('postal_code')?.toString() || null,
 			current_club: data.get('current_club')?.toString() || null,
 			division: data.get('division')?.toString() || null,
 			email: data.get('email')?.toString() ?? '',
-			phone: data.get('phone')?.toString() ?? '',
-			message: data.get('message')?.toString() || null
+			phone: data.get('phone')?.toString() ?? ''
 		};
 
+		// Champs communs aux deux formulaires
 		if (
 			!values.first_name ||
 			!values.last_name ||
@@ -75,6 +82,14 @@ export const actions: Actions = {
 			!values.preferred_position ||
 			!values.email ||
 			!values.phone
+		) {
+			return fail(400, { error: 'Merci de remplir tous les champs obligatoires.', values });
+		}
+
+		// Champs obligatoires uniquement pour "Rejoindre l'académie"
+		if (
+			isAcademie &&
+			(!values.birth_place || !values.nationality || !values.address || !values.postal_code)
 		) {
 			return fail(400, { error: 'Merci de remplir tous les champs obligatoires.', values });
 		}
@@ -115,23 +130,11 @@ export const actions: Actions = {
 			return fail(500, { error: "L'envoi de la carte d'identité a échoué, réessaie.", values });
 		}
 
-		let highlightVideoId: string | null = null;
-		const videoFile = data.get('highlight_video');
-
-		if (videoFile instanceof File && videoFile.size > 0) {
-			try {
-				highlightVideoId = await uploadFile(videoFile, fetch);
-			} catch {
-				return fail(500, { error: "L'envoi de la vidéo a échoué, réessaie.", values });
-			}
-		}
-
 		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				...values,
-				highlight_video: highlightVideoId,
 				id_card_front: idCardFrontId,
 				id_card_back: idCardBackId
 			})
