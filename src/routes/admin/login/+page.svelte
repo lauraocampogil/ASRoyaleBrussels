@@ -9,7 +9,7 @@
 
 <div
 	class="relative flex min-h-screen items-center justify-center bg-dark px-5"
-	style="background-image: linear-gradient(rgba(10,10,10,0.75), rgba(10,10,10,0.85)), url('/images/academy-background.jpg'); background-size: cover; background-position: center;"
+	style="background-image: linear-gradient(rgba(10,10,10,0.75), rgba(10,10,10,0.85)), url('/assets/images/academy-background.jpg'); background-size: cover; background-position: center;"
 >
 	<form
 		method="POST"
@@ -22,7 +22,11 @@
 		}}
 		class="w-full max-w-sm rounded-2xl bg-background p-6 sm:p-8"
 	>
-		<img src="/images/logo.svg" alt="Brussels Summit Academy" class="mx-auto mb-6 h-14 w-auto" />
+		<img
+			src="/assets/images/logo.svg"
+			alt="Brussels Summit Academy"
+			class="mx-auto mb-6 h-14 w-auto"
+		/>
 
 		<h1 class="font-clash mb-6 text-center text-2xl text-dark">Espace staff</h1>
 

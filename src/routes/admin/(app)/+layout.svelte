@@ -60,7 +60,7 @@
 {#snippet navLinks()}
 	<div class="mb-4 flex items-center gap-3 px-2">
 		<img
-			src="/images/logo.svg"
+			src="/assets/images/logo.svg"
 			alt="Brussels Summit Academy"
 			class="h-10 w-10 shrink-0 rounded-xl object-contain"
 		/>
