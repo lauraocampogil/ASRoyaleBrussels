@@ -120,6 +120,10 @@
 			? baseFiltered
 			: baseFiltered.filter((p: any) => p.gender === genderFilter)
 	);
+
+	// Dans la liste "Joueurs inscrits" (mixte), on sait s'il faut montrer les colonnes
+	// académie dès qu'au moins un joueur affiché est de type "academie".
+	let showAcademieFields = $derived(viewMode === 'academie' || viewMode === 'inscrits');
 </script>
 
 {#snippet statusSelect(player: any)}
@@ -162,6 +166,14 @@
 			</a>
 		{/if}
 	</div>
+{/snippet}
+
+{#snippet valueOrMissing(value: string | null | undefined)}
+	{#if value}
+		{value}
+	{:else}
+		<span class="font-medium text-red-600">Manquant</span>
+	{/if}
 {/snippet}
 
 {#snippet editForm(player: any)}
@@ -261,6 +273,41 @@
 				{/each}
 			</select>
 		</label>
+
+		{#if player.type === 'academie' || player.status === 'accepted'}
+			<label class="text-xs text-dark-accent">
+				Lieu de naissance
+				<input
+					name="birth_place"
+					value={player.birth_place ?? ''}
+					class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+				/>
+			</label>
+			<label class="text-xs text-dark-accent">
+				Nationalité
+				<input
+					name="nationality"
+					value={player.nationality ?? ''}
+					class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+				/>
+			</label>
+			<label class="text-xs text-dark-accent sm:col-span-2">
+				Adresse postale
+				<input
+					name="address"
+					value={player.address ?? ''}
+					class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+				/>
+			</label>
+			<label class="text-xs text-dark-accent">
+				Code postal
+				<input
+					name="postal_code"
+					value={player.postal_code ?? ''}
+					class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+				/>
+			</label>
+		{/if}
 
 		<label class="text-xs text-dark-accent">
 			Carte d'identité — Recto
@@ -576,22 +623,35 @@
 						</div>
 
 						<div class="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-dark-accent">
-							<span>Naissance : {formatDate(player.birth_date)}</span>
-							<span>Poste : {player.preferred_position ?? '—'}</span>
-							<span>Tél : {player.phone ?? '—'}</span>
-							<span>Club : {player.current_club ?? '—'}</span>
-							<span>Division : {divisionLabel(player.division)}</span>
+							<span
+								>Naissance : {@render valueOrMissing(
+									player.birth_date ? formatDate(player.birth_date) : null
+								)}</span
+							>
+							<span>Poste : {@render valueOrMissing(player.preferred_position)}</span>
+							<span>Tél : {@render valueOrMissing(player.phone)}</span>
+							<span>Club : {@render valueOrMissing(player.current_club)}</span>
+							<span
+								>Division : {@render valueOrMissing(
+									player.division ? divisionLabel(player.division) : null
+								)}</span
+							>
+							{#if player.type === 'academie' || player.status === 'accepted'}
+								<span>Lieu de naissance : {@render valueOrMissing(player.birth_place)}</span>
+								<span>Nationalité : {@render valueOrMissing(player.nationality)}</span>
+								<span class="col-span-2">Adresse : {@render valueOrMissing(player.address)}</span>
+								<span>Code postal : {@render valueOrMissing(player.postal_code)}</span>
+							{/if}
 						</div>
 
 						<div class="mb-3">
 							{#if player.complete}
-								<span class="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700"
-									>Complet</span
-								>
+								<span class="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">Oui</span>
 							{:else}
-								<span class="rounded-full bg-red-100 px-2 py-1 text-xs text-red-700">
-									Manque : {player.missing.join(', ')}
-								</span>
+								<span
+									class="rounded-full bg-red-100 px-2 py-1 text-xs text-red-700"
+									title={player.missing.join(', ')}>Non</span
+								>
 							{/if}
 						</div>
 
@@ -625,43 +685,63 @@
 					<thead class="bg-[#f4f5f7] print:bg-transparent">
 						<tr>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 								>Nom</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 								>Genre</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 								>Naissance</th
 							>
+							{#if showAcademieFields}
+								<th
+									class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+									>Lieu de naissance</th
+								>
+								<th
+									class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+									>Nationalité</th
+								>
+							{/if}
+							{#if showAcademieFields}
+								<th
+									class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+									>Adresse</th
+								>
+								<th
+									class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+									>Code postal</th
+								>
+							{/if}
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
-								>Poste</th
-							>
-							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
-								>Club</th
-							>
-							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
-								>Division</th
-							>
-							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 								>Téléphone</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 								>Email</th
+							>
+							<th
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+								>Poste</th
+							>
+							<th
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+								>Club</th
+							>
+							<th
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+								>Division</th
 							>
 							<th
 								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:hidden"
 								>Complétude</th
 							>
 							<th
-								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 								>Statut</th
 							>
 							<th
@@ -675,7 +755,7 @@
 						{#each filteredPlayers as player (player.id)}
 							<tr class="border-t border-dark-accent/10 transition-colors hover:bg-[#f4f5f7]/60">
 								<td
-									class="whitespace-nowrap px-5 py-4 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+									class="whitespace-nowrap px-5 py-4 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 								>
 									<div class="flex items-center gap-3">
 										<span
@@ -687,49 +767,71 @@
 									</div>
 								</td>
 								<td
-									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 									>{genderLabel(player.gender)}</td
 								>
 								<td
-									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
-									>{formatDate(player.birth_date)}</td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+									>{@render valueOrMissing(
+										player.birth_date ? formatDate(player.birth_date) : null
+									)}</td
+								>
+								{#if showAcademieFields}
+									<td
+										class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+										>{@render valueOrMissing(player.birth_place)}</td
+									>
+									<td
+										class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+										>{@render valueOrMissing(player.nationality)}</td
+									>
+								{/if}
+								{#if showAcademieFields}
+									<td
+										class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+										>{@render valueOrMissing(player.address)}</td
+									>
+									<td
+										class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+										>{@render valueOrMissing(player.postal_code)}</td
+									>
+								{/if}
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+									>{@render valueOrMissing(player.phone)}</td
 								>
 								<td
-									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
-									>{player.preferred_position ?? '—'}</td
-								>
-								<td
-									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
-									>{player.current_club ?? '—'}</td
-								>
-								<td
-									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
-									>{divisionLabel(player.division)}</td
-								>
-								<td
-									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
-									>{player.phone ?? '—'}</td
-								>
-								<td
-									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 									>{player.email}</td
+								>
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+									>{@render valueOrMissing(player.preferred_position)}</td
+								>
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+									>{@render valueOrMissing(player.current_club)}</td
+								>
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+									>{@render valueOrMissing(
+										player.division ? divisionLabel(player.division) : null
+									)}</td
 								>
 								<td class="px-5 py-4 print:hidden">
 									{#if player.complete}
 										<span class="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700"
-											>Complet</span
+											>Oui</span
 										>
 									{:else}
 										<span
 											class="rounded-full bg-red-100 px-2 py-1 text-xs text-red-700"
-											title={player.missing.join(', ')}
+											title={player.missing.join(', ')}>Non</span
 										>
-											Manque : {player.missing.join(', ')}
-										</span>
 									{/if}
 								</td>
 								<td
-									class="px-5 py-4 print:whitespace-normal print:break-words print:px-2 print:py-2 print:text-xs"
+									class="px-5 py-4 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 									>{@render statusSelect(player)}</td
 								>
 								<td class="px-5 py-4 print:hidden">{@render idCardButtons(player)}</td>
@@ -745,7 +847,7 @@
 							</tr>
 							{#if editingId === player.id}
 								<tr class="border-t border-dark-accent/10 print:hidden">
-									<td colspan="12" class="px-5 pb-4">{@render editForm(player)}</td>
+									<td colspan="14" class="px-5 pb-4">{@render editForm(player)}</td>
 								</tr>
 							{/if}
 						{/each}

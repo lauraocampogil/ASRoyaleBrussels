@@ -31,7 +31,7 @@ function getAuthHeaders() {
 }
 
 function requiredFieldsFor(type: string) {
-	return [
+	const base = [
 		{ key: 'first_name', label: 'Prénom' },
 		{ key: 'last_name', label: 'Nom' },
 		{ key: 'birth_date', label: 'Date de naissance' },
@@ -42,6 +42,17 @@ function requiredFieldsFor(type: string) {
 		{ key: 'id_card_front', label: "Carte d'identité (recto)" },
 		{ key: 'id_card_back', label: "Carte d'identité (verso)" }
 	];
+
+	if (type === 'academie') {
+		base.push(
+			{ key: 'birth_place', label: 'Lieu de naissance' },
+			{ key: 'nationality', label: 'Nationalité' },
+			{ key: 'address', label: 'Adresse postale' },
+			{ key: 'postal_code', label: 'Code postal' }
+		);
+	}
+
+	return base;
 }
 
 export const load: PageServerLoad = async ({ fetch }) => {
@@ -58,7 +69,10 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	const { data: registrations } = await res.json();
 
 	const players = (registrations ?? []).map((r: Record<string, any>) => {
-		const fields = requiredFieldsFor(r.type);
+		// Une fois accepté, le joueur devient membre de l'académie : les infos
+		// complètes deviennent requises, même s'il est arrivé via Talent Day.
+		const effectiveType = r.status === 'accepted' ? 'academie' : r.type;
+		const fields = requiredFieldsFor(effectiveType);
 		const missing = fields.filter(({ key }) => !r[key]).map(({ label }) => label);
 		return { ...r, missing, complete: missing.length === 0, status: r.status ?? 'pending' };
 	});
@@ -131,7 +145,11 @@ export const actions: Actions = {
 			preferred_position: String(data.get('preferred_position') ?? ''),
 			current_club: String(data.get('current_club') ?? ''),
 			division: String(data.get('division') ?? ''),
-			email: String(data.get('email') ?? '')
+			email: String(data.get('email') ?? ''),
+			birth_place: String(data.get('birth_place') ?? ''),
+			nationality: String(data.get('nationality') ?? ''),
+			address: String(data.get('address') ?? ''),
+			postal_code: String(data.get('postal_code') ?? '')
 		};
 
 		const idFront = data.get('id_card_front');
