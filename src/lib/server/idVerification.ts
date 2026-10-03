@@ -12,11 +12,53 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 const MIN_TEXT_LENGTH = 15;
 
+// Zone MRZ (Machine Readable Zone) : présente sur la quasi-totalité des passeports
+// et cartes d'identité modernes, sous forme de lignes "P<BEL..." ou "ID<BEL...<<<<<<"
+const MRZ_PATTERN = /[A-Z0-9<]{2,}<{3,}[A-Z0-9<]*/;
+
+// Termes typiques d'une carte d'identité ou d'un passeport, dans plusieurs langues,
+// pour ne pas bloquer les documents non-belges.
+const ID_KEYWORDS = [
+	// Français
+	"carte d'identite",
+	'carte identite',
+	'passeport',
+	'nationalite',
+	'date de naissance',
+	// Néerlandais
+	'identiteitskaart',
+	'paspoort',
+	'nationaliteit',
+	'geboortedatum',
+	// Allemand
+	'personalausweis',
+	'reisepass',
+	'staatsangehorigkeit',
+	// Anglais
+	'identity card',
+	'passport',
+	'nationality',
+	'date of birth',
+	'surname',
+	'given name',
+	// Noms de pays fréquents sur les documents
+	'royaume de belgique',
+	'koninkrijk belgie',
+	'kingdom of belgium',
+	'republique',
+	'republic'
+];
+
+function normalize(text: string): string {
+	return text
+		.toLowerCase()
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, ''); // retire les accents pour matcher plus largement
+}
+
 export async function looksLikeIdDocument(
 	file: File
 ): Promise<{ valid: boolean; reason?: string }> {
-	// On ne vérifie que les images (les PDF passent sans ce contrôle,
-	// Vision API ne traite pas les PDF via ce endpoint simple)
 	if (!file.type.startsWith('image/')) {
 		return { valid: true };
 	}
@@ -43,19 +85,29 @@ export async function looksLikeIdDocument(
 
 		if (!res.ok) {
 			console.error('Vision API error:', res.status, await res.text().catch(() => ''));
-			// En cas d'erreur de l'API, on laisse passer plutôt que de bloquer
-			// une vraie inscription à cause d'un souci technique externe.
 			return { valid: true };
 		}
 
 		const data = await res.json();
-		const detectedText: string = data?.responses?.[0]?.fullTextAnnotation?.text ?? '';
+		const rawText: string = data?.responses?.[0]?.fullTextAnnotation?.text ?? '';
+		const trimmed = rawText.trim();
 
-		if (detectedText.trim().length < MIN_TEXT_LENGTH) {
+		if (trimmed.length < MIN_TEXT_LENGTH) {
+			return {
+				valid: false,
+				reason: 'Cette image ne semble pas être un document lisible. Vérifie la photo et réessaie.'
+			};
+		}
+
+		const normalized = normalize(trimmed);
+		const hasKeyword = ID_KEYWORDS.some((keyword) => normalized.includes(keyword));
+		const hasMrz = MRZ_PATTERN.test(trimmed.toUpperCase());
+
+		if (!hasKeyword && !hasMrz) {
 			return {
 				valid: false,
 				reason:
-					"Cette image ne semble pas être un document lisible (carte d'identité). Vérifie la photo et réessaie."
+					"Cette image ne ressemble pas à une carte d'identité ou un passeport. Vérifie la photo et réessaie."
 			};
 		}
 
