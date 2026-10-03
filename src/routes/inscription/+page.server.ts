@@ -100,8 +100,11 @@ export const actions: Actions = {
 			(today.getMonth() === birthDate.getMonth() && today.getDate() >= birthDate.getDate());
 		if (!hadBirthdayThisYear) age--;
 
-		if (isNaN(birthDate.getTime()) || age < 16) {
-			return fail(400, { error: "Tu dois avoir au moins 16 ans pour t'inscrire.", values });
+		if (isNaN(birthDate.getTime()) || age < 16 || age > 28) {
+			return fail(400, {
+				error: 'Les inscriptions sont réservées aux 16-28 ans.',
+				values
+			});
 		}
 
 		const idFront = data.get('id_card_front');

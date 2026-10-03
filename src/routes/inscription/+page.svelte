@@ -134,7 +134,11 @@
 			<form
 				method="POST"
 				enctype="multipart/form-data"
-				use:enhance={() => {
+				use:enhance={({ cancel }) => {
+					if (submitting) {
+						cancel();
+						return;
+					}
 					submitting = true;
 					return async ({ update }) => {
 						submitting = false;
@@ -207,7 +211,9 @@
 							value={form?.values?.birth_date ?? ''}
 							class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
 						/>
+						<span class="text-xs text-dark-accent">Inscriptions ouvertes de 16 à 28 ans</span>
 					</label>
+
 					{#if activeTab === 'academie'}
 						<label class="flex flex-col gap-2">
 							<span class="text-dark/70">Lieu de naissance</span>
