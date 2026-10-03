@@ -52,7 +52,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 		const subject = 'Ton inscription au Talent Day est confirmée — infos pratiques';
 		const content = `
 			<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Salut ${opts.firstName},</h2>
-			<p>Merci pour ton inscription au Talent Day Brussels Summit Academy ! Ta candidature a bien été enregistrée, nous avons hâte de te voir sur le terrain.</p>
+			<p>Merci pour ton inscription au Talent Day Brussels Summit Academy! Ta candidature a bien été enregistrée, nous avons hâte de te voir sur le terrain.</p>
 			<p style="margin:24px 0 8px; font-weight:600;">Rendez-vous :</p>
 			<table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
 				<tr>
@@ -70,11 +70,11 @@ export async function sendRegistrationConfirmationEmail(opts: {
 			</table>
 			<p style="margin:0 0 8px; font-weight:600;">À apporter le jour J :</p>
 			<ul style="margin:0 0 20px; padding-left:20px; color:#333;">
-				<li>Tenue de sport complète + crampons (ou chaussures adaptées au terrain)</li>
+				<li>Tenue de sport complète + crampons</li>
 				<li>Ta carte d'identité originale (en plus du scan déjà envoyé)</li>
 				<li>Une bouteille d'eau</li>
 			</ul>
-			<p>Si tu as la moindre question avant le jour J, n'hésite pas à nous écrire directement à cet email.</p>
+			<p>Si tu as la moindre question avant le jour J, n'hésite pas à nous écrire directement au email: brussels@summitacademy-info.com.</p>
 			<p style="margin-top:24px;">À très vite,<br/>L'équipe Brussels Summit Academy</p>
 		`;
 		await getResend().emails.send({
