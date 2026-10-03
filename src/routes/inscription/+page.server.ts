@@ -171,16 +171,6 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('Confirmation email failed:', err);
 		}
-		try {
-			await sendRegistrationConfirmationEmail({
-				to: values.email,
-				firstName: values.first_name,
-				type: emailType,
-				talentDayDate: talentDayDate || undefined
-			});
-		} catch (err) {
-			console.error('Confirmation email failed:', err);
-		}
 
 		return { success: true };
 	}
