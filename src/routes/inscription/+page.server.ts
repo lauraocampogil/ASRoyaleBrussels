@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { PUBLIC_DIRECTUS_URL } from '$env/static/public';
 import type { Actions, PageServerLoad } from './$types';
 import { sendRegistrationConfirmationEmail } from '$lib/server/email';
+import { looksLikeIdDocument } from '$lib/server/idVerification';
 
 export const load: PageServerLoad = async ({ fetch }) => {
 	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
@@ -119,6 +120,18 @@ export const actions: Actions = {
 				error: "Le recto et le verso de ta carte d'identité sont obligatoires.",
 				values
 			});
+		}
+
+		const [frontCheck, backCheck] = await Promise.all([
+			looksLikeIdDocument(idFront),
+			looksLikeIdDocument(idBack)
+		]);
+
+		if (!frontCheck.valid) {
+			return fail(400, { error: `Recto : ${frontCheck.reason}`, values });
+		}
+		if (!backCheck.valid) {
+			return fail(400, { error: `Verso : ${backCheck.reason}`, values });
 		}
 
 		let idCardFrontId: string;
