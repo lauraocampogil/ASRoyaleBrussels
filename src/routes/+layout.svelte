@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import '../app.css';
 	import { TalentDayPopup } from '$lib/components';
+	import CookieBanner from '$lib/components/CookieBanner.svelte';
 
 	let { children, data } = $props();
 
@@ -53,3 +54,5 @@
 <TalentDayPopup {...data.talentDayPopup} />
 
 {@render children()}
+
+<CookieBanner />
