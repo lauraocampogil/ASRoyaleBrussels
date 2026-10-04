@@ -109,7 +109,7 @@
 				{@html title}
 			</h1>
 			<div
-				class="flex w-full max-w-sm flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4"
+				class="flex w-full max-w-xs flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4"
 			>
 				{#if cta_primary_label}
 					<Button
