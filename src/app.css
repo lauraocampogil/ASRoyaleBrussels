@@ -62,22 +62,21 @@
 html {
 	font-size: 16px;
 	scroll-behavior: smooth;
-	scroll-padding-top: 90px; /* ajuste selon la hauteur réelle de ton header */
-	background-color: #1807b9; /* bleu primary, comme le hero et le footer */
+	scroll-padding-top: 90px;
+	background-color: var(--color-primary);
 	min-height: 100dvh;
 }
 
 body {
 	font-family: 'PlusJakartaSans', sans-serif;
 	line-height: 1.3;
-	background-color: #f7f5f0;
-	color: #10141c;
+	background-color: var(--color-background);
+	color: var(--color-dark);
 }
 
 html,
 body {
 	overflow-x: hidden;
-	@apply bg-background;
 }
 
 @theme {
@@ -148,20 +147,23 @@ body {
 
 	/* ─── Mobile type scale (placeholders) ─── */
 
-	/* H1 — ClashDisplay */
-	--text-mobile-title-6xl: 2.9375rem;
-	--text-mobile-title-6xl--line-height: 1.2;
+	/* H1 */
+	--text-mobile-title-6xl: 2.5rem;
+	--text-mobile-title-6xl--line-height: 1.15;
 	--text-mobile-title-6xl--font-weight: 700;
 	/* H2 */
-	--text-mobile-title-2xl: 2.488rem;
-	--text-mobile-title-2xl--line-height: 1.2;
+	--text-mobile-title-2xl: 2rem;
+	--text-mobile-title-2xl--line-height: 1.15;
 	--text-mobile-title-2xl--font-weight: 600;
 	/* H3 */
-	--text-mobile-title-xl: 2.075rem;
+	--text-mobile-title-xl: 1.75rem;
 	--text-mobile-title-xl--line-height: 1.2;
+	/* H4 (manquait) */
+	--text-mobile-title-lg: 1.5rem;
+	--text-mobile-title-lg--line-height: 1.2;
 	/* p */
-	--text-mobile-body: 1rem;
-	--text-mobile-body--line-height: 1.4;
+	--text-mobile-body: 1.0625rem;
+	--text-mobile-body--line-height: 1.5;
 
 	/* ─── Breakpoints ─── */
 	--breakpoint-2xs: 375px;
