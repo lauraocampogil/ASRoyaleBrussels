@@ -108,12 +108,24 @@
 			>
 				{@html title}
 			</h1>
-			<div class="flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row sm:gap-4">
+			<div
+				class="flex w-full max-w-sm flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4"
+			>
 				{#if cta_primary_label}
-					<Button href={cta_primary_href} label={cta_primary_label} variant="primary" />
+					<Button
+						href={cta_primary_href}
+						label={cta_primary_label}
+						variant="primary"
+						class="w-full sm:w-auto"
+					/>
 				{/if}
 				{#if cta_secondary_label}
-					<Button href={cta_secondary_href} label={cta_secondary_label} variant="outline-white" />
+					<Button
+						href={cta_secondary_href}
+						label={cta_secondary_label}
+						variant="outline-white"
+						class="w-full sm:w-auto"
+					/>
 				{/if}
 			</div>
 		</div>
