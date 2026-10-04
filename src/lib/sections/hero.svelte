@@ -140,7 +140,7 @@
 				bind:this={videoEl}
 				src={background}
 				autoplay
-				preload="auto"
+				preload="metadata"
 				muted
 				loop
 				playsinline
