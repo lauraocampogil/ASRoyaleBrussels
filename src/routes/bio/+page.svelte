@@ -191,14 +191,14 @@
 				class="col-span-8 mx-auto min-w-0 text-center md:col-span-6 md:col-start-2 lg:col-span-6 lg:col-start-2"
 			>
 				<h2
-					class="font-clash text-mobile-title-lg leading-[1.15] uppercase md:text-title-xl lg:text-title-3xl"
+					class="text-balance font-clash text-[1.875rem] leading-[1.15] uppercase sm:text-4xl md:text-title-xl lg:text-title-3xl"
 				>
-					<span class="block">
+					<span class="md:block">
 						{#each closingLine1 as word, i}
 							<span class="quote-word">{word}{i < closingLine1.length - 1 ? ' ' : ''}</span>
 						{/each}
-					</span>
-					<span class="block">
+					</span>{' '}
+					<span class="md:block">
 						{#each closingLine2 as word, i}
 							<span class="quote-word">{word}{i < closingLine2.length - 1 ? ' ' : ''}</span>
 						{/each}
