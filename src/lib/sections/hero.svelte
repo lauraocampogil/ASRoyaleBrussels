@@ -133,7 +133,7 @@
 
 	<div
 		bind:this={videoWrapEl}
-		class="absolute bottom-0 left-1/2 h-[26vh] w-[88vw] -translate-x-1/2 overflow-hidden rounded-t-[10px] bg-dark sm:h-[30vh] sm:w-[80vw] xl:h-[32vh] xl:w-[75vw]"
+		class="absolute bottom-0 left-1/2 h-[26vh] w-[88vw] -translate-x-1/2 overflow-hidden rounded-t-[10px] bg-primary sm:h-[30vh] sm:w-[80vw] xl:h-[32vh] xl:w-[75vw]"
 	>
 		{#if background}
 			<video
