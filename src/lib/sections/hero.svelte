@@ -27,13 +27,13 @@
 			const { ScrollTrigger } = await import('gsap/ScrollTrigger');
 			gsap.registerPlugin(ScrollTrigger);
 
-			const normalizer = ScrollTrigger.normalizeScroll(true);
-			if (normalizer) {
-				scrollNormalizer.set({
-					disable: () => normalizer.disable(),
-					enable: () => normalizer.enable()
-				});
-			}
+			// const normalizer = ScrollTrigger.normalizeScroll(true);
+			// if (normalizer) {
+			//	scrollNormalizer.set({
+			//		disable: () => normalizer.disable(),
+			//		enable: () => normalizer.enable()
+			//	});
+			// }
 
 			ctx = gsap.context(() => {
 				gsap.from(contentEl.children, {
@@ -56,7 +56,7 @@
 							onUpdate: (self) => {
 								heroPinned.set(self.progress >= 0.5);
 								if (self.progress >= 0.75) {
-									videoEl?.play();
+									videoEl?.play().catch(() => {});
 								} else {
 									videoEl?.pause();
 								}
@@ -138,9 +138,9 @@
 		{#if background}
 			<video
 				bind:this={videoEl}
-				src={background}
+				src={`${background}#t=0.001`}
 				autoplay
-				preload="metadata"
+				preload="auto"
 				muted
 				loop
 				playsinline
