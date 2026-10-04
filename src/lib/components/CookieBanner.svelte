@@ -8,7 +8,8 @@
 		if (existing === 'accepted') {
 			loadGoogleAnalytics();
 		} else if (existing === null) {
-			visible = true;
+			const t = setTimeout(() => (visible = true), 1000);
+			return () => clearTimeout(t);
 		}
 	});
 
@@ -26,28 +27,26 @@
 
 {#if visible}
 	<div
-		class="fixed inset-x-0 bottom-0 z-50 border-t border-dark/10 bg-dark px-5 py-5 shadow-lg sm:px-8"
+		class="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-999 xl:right-6 xl:bottom-6 xl:left-auto xl:max-w-md"
 	>
-		<div
-			class="mx-auto flex max-w-5xl flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between"
-		>
-			<p class="text-sm text-white/80">
-				On utilise des cookies pour mesurer l'audience du site et améliorer ton expérience. Tu peux
-				accepter ou refuser à tout moment.
-				<a href="/cookies" class="underline hover:text-secondary">En savoir plus</a>
+		<div class="rounded-2xl bg-dark p-5 shadow-2xl">
+			<p class="mb-1 text-sm font-bold text-white">Ce site utilise des cookies</p>
+			<p class="mb-4 text-sm leading-relaxed text-white/70">
+				Nous utilisons des cookies analytiques (Google Analytics) pour améliorer votre expérience.
+				<a href="/cookies" class="text-secondary underline underline-offset-2">En savoir plus</a>
 			</p>
-			<div class="flex shrink-0 gap-3">
+			<div class="flex gap-2">
 				<button
 					type="button"
 					onclick={decline}
-					class="rounded-full border border-white/30 px-5 py-2 text-sm text-white transition-colors hover:bg-white/10"
+					class="min-h-11 flex-1 cursor-pointer rounded-full border border-white/20 text-sm font-semibold text-white/80 transition-colors hover:border-white/40 hover:text-white"
 				>
 					Refuser
 				</button>
 				<button
 					type="button"
 					onclick={accept}
-					class="rounded-full bg-secondary px-5 py-2 text-sm font-medium text-dark transition-colors hover:brightness-95"
+					class="min-h-11 flex-1 cursor-pointer rounded-full bg-secondary text-sm font-semibold text-dark transition-opacity hover:opacity-90"
 				>
 					Accepter
 				</button>
