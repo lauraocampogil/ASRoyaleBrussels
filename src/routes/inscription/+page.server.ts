@@ -3,6 +3,7 @@ import { PUBLIC_DIRECTUS_URL } from '$env/static/public';
 import type { Actions, PageServerLoad } from './$types';
 import { sendRegistrationConfirmationEmail } from '$lib/server/email';
 import { looksLikeIdDocument } from '$lib/server/idVerification';
+import { findAcceptedByEmail, completeRegistration } from '$lib/server/registrations';
 
 export const load: PageServerLoad = async ({ fetch }) => {
 	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
@@ -108,6 +109,20 @@ export const actions: Actions = {
 			});
 		}
 
+		// Joueur déjà accepté (Talent Day) qui complète sa fiche : on met à jour sa ligne existante
+		const existing = isAcademie ? await findAcceptedByEmail(values.email) : null;
+		const alreadyHasIds = !!(existing?.id_card_front && existing?.id_card_back);
+
+		if (existing && alreadyHasIds) {
+			try {
+				await completeRegistration(existing, values);
+			} catch (err) {
+				console.error('Registration completion failed:', err);
+				return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
+			}
+			return { success: true };
+		}
+
 		const idFront = data.get('id_card_front');
 		const idBack = data.get('id_card_back');
 		if (
@@ -142,6 +157,21 @@ export const actions: Actions = {
 			idCardBackId = await uploadFile(idBack, fetch);
 		} catch {
 			return fail(500, { error: "L'envoi de la carte d'identité a échoué, réessaie.", values });
+		}
+
+		// Joueur accepté mais sans carte d'identité enregistrée : on complète sa fiche avec les cartes
+		if (existing) {
+			try {
+				await completeRegistration(existing, {
+					...values,
+					id_card_front: idCardFrontId,
+					id_card_back: idCardBackId
+				});
+			} catch (err) {
+				console.error('Registration completion failed:', err);
+				return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
+			}
+			return { success: true };
 		}
 
 		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration`, {
