@@ -63,6 +63,8 @@ html {
 	font-size: 16px;
 	scroll-behavior: smooth;
 	scroll-padding-top: 90px; /* ajuste selon la hauteur réelle de ton header */
+	background-color: #1807b9; /* bleu primary, comme le hero et le footer */
+	min-height: 100dvh;
 }
 
 body {
