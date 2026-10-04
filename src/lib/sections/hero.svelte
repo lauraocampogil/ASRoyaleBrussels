@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { heroPinned } from '$lib/stores/heroPinned';
 	import { Button, Tagline, DotGrid } from '$lib/components';
+	import { scrollNormalizer } from '$lib/stores/scrollNormalizer';
 
 	let {
 		tagline,
@@ -26,7 +27,13 @@
 			const { ScrollTrigger } = await import('gsap/ScrollTrigger');
 			gsap.registerPlugin(ScrollTrigger);
 
-			ScrollTrigger.normalizeScroll(true);
+			const normalizer = ScrollTrigger.normalizeScroll(true);
+			if (normalizer) {
+				scrollNormalizer.set({
+					disable: () => normalizer.disable(),
+					enable: () => normalizer.enable()
+				});
+			}
 
 			ctx = gsap.context(() => {
 				gsap.from(contentEl.children, {
@@ -70,7 +77,10 @@
 			}, sectionEl);
 		})();
 
-		return () => ctx?.revert();
+		return () => {
+			ctx?.revert();
+			scrollNormalizer.set(null);
+		};
 	});
 </script>
 
