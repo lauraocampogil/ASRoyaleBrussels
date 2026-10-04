@@ -24,7 +24,7 @@
 	};
 
 	const baseClass =
-		'group text-button inline-flex items-center justify-center overflow-hidden rounded px-6 py-3 transition-colors disabled:opacity-50';
+		'group text-button inline-flex min-h-12 items-center justify-center overflow-hidden rounded px-7 py-3.5 transition-colors disabled:opacity-50';
 </script>
 
 {#snippet letters()}
