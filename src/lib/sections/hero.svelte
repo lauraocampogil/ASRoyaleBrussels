@@ -3,6 +3,7 @@
 	import { heroPinned } from '$lib/stores/heroPinned';
 	import { Button, Tagline, DotGrid } from '$lib/components';
 	import { scrollNormalizer } from '$lib/stores/scrollNormalizer';
+	import { mediaUrl } from '$lib/media';
 
 	let {
 		tagline,
@@ -138,7 +139,7 @@
 		{#if background}
 			<video
 				bind:this={videoEl}
-				src={`${background}#t=0.001`}
+				src={`${mediaUrl(background)}#t=0.001`}
 				autoplay
 				preload="auto"
 				muted

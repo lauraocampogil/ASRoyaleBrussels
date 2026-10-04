@@ -3,6 +3,7 @@
 	import { Tagline } from '$lib/components';
 	import { reveal } from '$lib/actions/reveal';
 	import { scrollNormalizer } from '$lib/stores/scrollNormalizer';
+	import { mediaUrl } from '$lib/media';
 
 	let { eyebrow, title, description, players = [] }: any = $props();
 
@@ -392,7 +393,7 @@
 			✕
 		</button>
 		<video
-			src={selected.highlight_video}
+			src={mediaUrl(selected.highlight_video)}
 			controls
 			autoplay
 			playsinline
