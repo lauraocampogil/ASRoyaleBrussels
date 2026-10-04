@@ -105,12 +105,27 @@
 		if (e.key === 'Escape') closeModal();
 	}
 
-	function preventTouchMove(e: TouchEvent) {
-		e.preventDefault();
-	}
+	function lockScroll(node: HTMLElement) {
+		const blockTouch = (e: TouchEvent) => {
+			// On laisse la vidéo gérer ses propres contrôles (barre de progression, etc.)
+			if (e.target instanceof HTMLVideoElement) return;
+			e.preventDefault();
+			e.stopPropagation();
+		};
+		const blockWheel = (e: WheelEvent) => {
+			e.preventDefault();
+			e.stopPropagation();
+		};
 
-	function preventScroll(e: Event) {
-		e.preventDefault();
+		node.addEventListener('touchmove', blockTouch, { passive: false });
+		node.addEventListener('wheel', blockWheel, { passive: false });
+
+		return {
+			destroy() {
+				node.removeEventListener('touchmove', blockTouch);
+				node.removeEventListener('wheel', blockWheel);
+			}
+		};
 	}
 
 	$effect(() => {
@@ -359,14 +374,15 @@
 
 {#if modalOpen && selected?.highlight_video}
 	<div
-		class="fixed inset-0 z-100 flex items-center justify-center bg-black/80 p-6"
+		use:lockScroll
+		class="fixed inset-0 z-100 flex h-dvh items-center justify-center overscroll-contain bg-black/80 p-4 sm:p-6"
 		onclick={closeModal}
 		role="presentation"
 	>
 		<button
 			type="button"
 			onclick={closeModal}
-			class="absolute top-6 right-6 text-2xl text-white transition-opacity hover:opacity-70"
+			class="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center text-2xl text-white transition-opacity hover:opacity-70 sm:top-6 sm:right-6"
 			aria-label="Fermer"
 		>
 			✕
@@ -377,7 +393,7 @@
 			autoplay
 			playsinline
 			onclick={(e) => e.stopPropagation()}
-			class="max-h-[85vh] max-w-4xl rounded-[10px]"
+			class="max-h-[80dvh] w-full max-w-4xl rounded-[10px] bg-black object-contain"
 		></video>
 	</div>
 {/if}
