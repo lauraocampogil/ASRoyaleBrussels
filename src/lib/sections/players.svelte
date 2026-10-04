@@ -293,6 +293,7 @@
 					<th class="pb-3 text-left font-normal">
 						<select
 							bind:value={nameRange}
+							aria-label="Trier les joueurs par nom"
 							class="border-none bg-transparent text-xs tracking-wide text-dark/40 uppercase focus:outline-none"
 						>
 							{#each nameRanges as range}
@@ -303,6 +304,7 @@
 					<th class="pb-3 text-left font-normal">
 						<select
 							bind:value={positionFilter}
+							aria-label="Filtrer par position"
 							class="border-none bg-transparent text-xs tracking-wide text-dark/40 uppercase focus:outline-none"
 						>
 							<option value="all">Position</option>
@@ -314,6 +316,7 @@
 					<th class="pb-3 text-left font-normal">
 						<select
 							bind:value={countryFilter}
+							aria-label="Filtrer par pays"
 							class="border-none bg-transparent text-xs tracking-wide text-dark/40 uppercase focus:outline-none"
 						>
 							<option value="all">Pays</option>
@@ -325,6 +328,7 @@
 					<th class="pb-3 text-left font-normal">
 						<select
 							bind:value={clubFilter}
+							aria-label="Filtrer par club"
 							class="border-none bg-transparent text-xs tracking-wide text-dark/40 uppercase focus:outline-none"
 						>
 							<option value="all">Club</option>
