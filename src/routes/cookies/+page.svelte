@@ -28,13 +28,19 @@
 			Retour
 		</a>
 
-		<h1 class="mb-2 text-mobile-title-2xl text-dark xl:text-title-2xl">Politique de Cookies</h1>
-		<p class="mb-10 text-sm text-dark/40">Dernière mise à jour : Juillet 2026</p>
+		<h1
+			class="mb-2 text-[1.625rem] leading-tight text-balance text-dark sm:text-3xl md:text-4xl xl:text-title-2xl"
+		>
+			Politique de Cookies
+		</h1>
+		<p class="mb-10 text-sm text-dark/40">Dernière mise à jour : Octobre 2026</p>
 
 		<div class="flex flex-col gap-8 text-dark">
 			<section class="flex flex-col gap-3">
-				<h2 class="text-mobile-title-lg font-medium text-dark">Qu'est-ce qu'un cookie ?</h2>
-				<p class="text-mobile-body leading-relaxed">
+				<h2 class="text-lg leading-snug font-medium text-dark sm:text-xl">
+					Qu'est-ce qu'un cookie ?
+				</h2>
+				<p class="text-base leading-relaxed">
 					Un cookie est un petit fichier texte déposé sur votre appareil lorsque vous visitez un
 					site web. Il permet au site de mémoriser vos actions et préférences pendant une durée
 					déterminée.
@@ -44,7 +50,9 @@
 			<div class="border-t border-dashed border-dark/10"></div>
 
 			<section class="flex flex-col gap-3">
-				<h2 class="text-mobile-title-lg font-medium text-dark">Cookies utilisés sur ce site</h2>
+				<h2 class="text-lg leading-snug font-medium text-dark sm:text-xl">
+					Cookies utilisés sur ce site
+				</h2>
 
 				<div class="flex flex-col gap-2 rounded-2xl bg-primary-dark/20 p-5">
 					<div class="flex items-center justify-between">
@@ -53,7 +61,7 @@
 							>Toujours actifs</span
 						>
 					</div>
-					<p class="text-mobile-body text-dark/70">
+					<p class="text-base text-dark/70">
 						Indispensables au fonctionnement du site. Ne peuvent pas être désactivés.
 					</p>
 					<ul class="flex flex-col gap-1 pl-4">
@@ -74,7 +82,7 @@
 							>Sur consentement</span
 						>
 					</div>
-					<p class="text-mobile-body text-dark/70">
+					<p class="text-base text-dark/70">
 						Ne sont déposés que si vous cliquez sur "Accepter" dans le bandeau de cookies. Nous
 						permettent de mesurer la fréquentation du site (pages visitées, provenance des
 						visiteurs).
@@ -97,7 +105,7 @@
 							>Aucun cookie</span
 						>
 					</div>
-					<p class="text-mobile-body text-dark/70">
+					<p class="text-base text-dark/70">
 						Outil de mesure d'audience respectueux de la vie privée, qui ne dépose aucun cookie et
 						ne collecte aucune donnée personnelle identifiable. Fonctionne sans nécessiter votre
 						consentement.
@@ -112,7 +120,7 @@
 							>Aucun cookie</span
 						>
 					</div>
-					<p class="text-mobile-body text-dark/70">
+					<p class="text-base text-dark/70">
 						Utilisé uniquement pour vérifier la propriété du site auprès de Google et suivre son
 						référencement. Ne dépose aucun cookie et ne collecte aucune donnée sur les visiteurs.
 					</p>
@@ -122,8 +130,8 @@
 			<div class="border-t border-dashed border-dark/10"></div>
 
 			<section class="flex flex-col gap-3">
-				<h2 class="text-mobile-title-lg font-medium text-dark">Gérer vos préférences</h2>
-				<p class="text-mobile-body leading-relaxed">
+				<h2 class="text-lg leading-snug font-medium text-dark sm:text-xl">Gérer vos préférences</h2>
+				<p class="text-base leading-relaxed">
 					Votre choix concernant Google Analytics est mémorisé sur votre appareil. Pour le modifier,
 					effacez les données de navigation de ce site dans votre navigateur — le bandeau de
 					consentement réapparaîtra à votre prochaine visite. Vous pouvez aussi configurer votre
@@ -131,7 +139,7 @@
 				</p>
 				<ul class="flex flex-col gap-1 pl-4">
 					{#each [{ label: 'Google Chrome', url: 'https://support.google.com/chrome/answer/95647' }, { label: 'Mozilla Firefox', url: 'https://support.mozilla.org/fr/kb/activer-desactiver-cookies' }, { label: 'Safari', url: 'https://support.apple.com/fr-fr/guide/safari/sfri11471/mac' }, { label: 'Microsoft Edge', url: 'https://support.microsoft.com/fr-fr/microsoft-edge/supprimer-les-cookies-dans-microsoft-edge-63947406-40ac-c3b8-57b9-2a946a29ae09' }] as browser}
-						<li class="flex items-start gap-2 text-mobile-body">
+						<li class="flex items-start gap-2 text-base">
 							<span class="mt-1 text-primary">•</span>
 							<a
 								href={browser.url}
@@ -147,8 +155,8 @@
 			<div class="border-t border-dashed border-dark/10"></div>
 
 			<section class="flex flex-col gap-3">
-				<h2 class="text-mobile-title-lg font-medium text-dark">Contact</h2>
-				<p class="text-mobile-body leading-relaxed">
+				<h2 class="text-lg leading-snug font-medium text-dark sm:text-xl">Contact</h2>
+				<p class="text-base leading-relaxed">
 					Pour toute question concernant notre politique de cookies :<br />
 					<a href="mailto:brussels@summitacademy-info.com" class="text-primary underline"
 						>brussels@summitacademy-info.com</a
