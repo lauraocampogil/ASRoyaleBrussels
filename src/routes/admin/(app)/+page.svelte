@@ -9,8 +9,8 @@
 	let genderFilter = $state<'all' | 'fille' | 'garcon'>('all');
 
 	let viewMode = $derived(
-		(page.url.searchParams.get('view') as 'overview' | 'talent_days' | 'academie' | 'inscrits') ??
-			'overview'
+		(page.url.searchParams.get('view') as
+			'overview' | 'talent_days' | 'academie' | 'inscrits' | 'stats') ?? 'overview'
 	);
 
 	function changeView(view: string) {
@@ -124,6 +124,23 @@
 	// Dans la liste "Joueurs inscrits" (mixte), on sait s'il faut montrer les colonnes
 	// académie dès qu'au moins un joueur affiché est de type "academie".
 	let showAcademieFields = $derived(viewMode === 'academie' || viewMode === 'inscrits');
+	let statsSearch = $state('');
+	let savedId = $state<number | null>(null);
+
+	function statsKey(s: string) {
+		return (s ?? '')
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase();
+	}
+
+	let statsPlayers = $derived(
+		acceptedPlayers.filter(
+			(p: any) =>
+				(genderFilter === 'all' || p.gender === genderFilter) &&
+				statsKey(`${p.first_name} ${p.last_name}`).includes(statsKey(statsSearch.trim()))
+		)
+	);
 </script>
 
 {#snippet statusSelect(player: any)}
@@ -546,6 +563,138 @@
 						<p class="text-xs text-dark-accent">Aucune inscription pour le moment.</p>
 					{/each}
 				</div>
+			</div>
+		</div>
+	{:else if viewMode === 'stats'}
+		<div class="rounded-2xl bg-white p-5 shadow-sm">
+			<div class="mb-6 flex flex-wrap items-center gap-3">
+				<h1 class="font-clash text-xl text-dark sm:text-2xl">
+					Stats joueurs ({statsPlayers.length})
+				</h1>
+				<select
+					bind:value={genderFilter}
+					class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2 text-sm text-dark"
+				>
+					<option value="all">Tous les genres</option>
+					<option value="fille">Femmes</option>
+					<option value="garcon">Hommes</option>
+				</select>
+				<input
+					type="search"
+					bind:value={statsSearch}
+					placeholder="Rechercher un joueur"
+					aria-label="Rechercher un joueur"
+					class="w-full rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2 text-sm text-dark sm:w-60"
+				/>
+			</div>
+
+			{#if statsPlayers.length === 0}
+				<p class="rounded-xl bg-[#f4f5f7] px-4 py-3 text-sm text-dark-accent">
+					Aucun joueur accepté pour le moment.
+				</p>
+			{/if}
+
+			<div class="flex flex-col gap-3">
+				{#each statsPlayers as player (player.id)}
+					{#if player.siteProfile}
+						<form
+							method="POST"
+							action="?/updateStats"
+							use:enhance={() => {
+								return async ({ result, update }) => {
+									await update({ reset: false });
+									if (result.type === 'success') {
+										savedId = player.id;
+										setTimeout(() => (savedId = null), 2000);
+									}
+								};
+							}}
+							class="grid grid-cols-2 items-end gap-3 rounded-xl border border-dark-accent/10 p-4 md:grid-cols-[1.4fr_repeat(4,1fr)_auto]"
+						>
+							<input type="hidden" name="profile_id" value={player.siteProfile.id} />
+
+							<div class="col-span-2 flex items-center gap-3 md:col-span-1">
+								<span
+									class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
+								>
+									{initials(player)}
+								</span>
+								<div class="min-w-0">
+									<p class="truncate font-medium text-dark">
+										{player.first_name}
+										{player.last_name}
+									</p>
+									<p class="truncate text-xs text-dark-accent">{player.preferred_position}</p>
+								</div>
+							</div>
+
+							<label class="text-xs text-dark-accent">
+								Taille (cm)
+								<input
+									type="number"
+									name="height"
+									min="100"
+									max="230"
+									value={player.siteProfile.height ?? ''}
+									class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+								/>
+							</label>
+							<label class="text-xs text-dark-accent">
+								Pied fort
+								<select
+									name="foot"
+									value={player.siteProfile.foot ?? ''}
+									class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+								>
+									<option value="">—</option>
+									<option value="droit">Droit</option>
+									<option value="gauche">Gauche</option>
+									<option value="les deux">Les deux</option>
+									{#if player.siteProfile.foot && !['droit', 'gauche', 'les deux'].includes(player.siteProfile.foot)}
+										<option value={player.siteProfile.foot}>{player.siteProfile.foot}</option>
+									{/if}
+								</select>
+							</label>
+							<label class="text-xs text-dark-accent">
+								Buts
+								<input
+									type="number"
+									name="goals"
+									min="0"
+									value={player.siteProfile.goals ?? ''}
+									class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+								/>
+							</label>
+							<label class="text-xs text-dark-accent">
+								Passes décisives
+								<input
+									type="number"
+									name="assists"
+									min="0"
+									value={player.siteProfile.assists ?? ''}
+									class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+								/>
+							</label>
+
+							<button
+								type="submit"
+								class="col-span-2 rounded-full bg-secondary px-4 py-2 text-xs font-medium text-dark md:col-span-1"
+							>
+								{savedId === player.id ? 'Enregistré ✓' : 'Enregistrer'}
+							</button>
+						</form>
+					{:else}
+						<div
+							class="flex flex-col gap-1 rounded-xl border border-yellow-300 bg-yellow-50 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+						>
+							<span class="font-medium text-dark">{player.first_name} {player.last_name}</span>
+							<span class="text-xs text-yellow-800">
+								Aucune fiche du site (Players) avec ce nom : crée-la ou corrige son nom dans
+								Directus.
+							</span>
+						</div>
+					{/if}
+				{/each}
 			</div>
 		</div>
 	{:else}

@@ -55,6 +55,25 @@ function requiredFieldsFor(type: string) {
 	return base;
 }
 
+function nameKey(name: string) {
+	return (name ?? '')
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9\s]/g, ' ')
+		.split(/\s+/)
+		.filter(Boolean)
+		.sort()
+		.join(' ');
+}
+
+function numOrNull(value: FormDataEntryValue | null) {
+	const v = String(value ?? '').trim();
+	if (v === '') return null;
+	const n = Number(v.replace(',', '.'));
+	return Number.isFinite(n) ? n : null;
+}
+
 export const load: PageServerLoad = async ({ fetch }) => {
 	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration?sort=-id&limit=-1`, {
 		headers: getAuthHeaders()
@@ -68,13 +87,29 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 	const { data: registrations } = await res.json();
 
+	const profilesRes = await fetch(
+		`${PUBLIC_DIRECTUS_URL}/items/Players?limit=-1&fields=id,name,goals,assists,foot,height`,
+		{ headers: getAuthHeaders() }
+	);
+	const profiles: Record<string, any>[] = profilesRes.ok
+		? ((await profilesRes.json()).data ?? [])
+		: [];
+	const profileByName = new Map(profiles.map((p) => [nameKey(p.name), p]));
+
 	const players = (registrations ?? []).map((r: Record<string, any>) => {
 		// Une fois accepté, le joueur devient membre de l'académie : les infos
 		// complètes deviennent requises, même s'il est arrivé via Talent Day.
 		const effectiveType = r.status === 'accepted' ? 'academie' : r.type;
 		const fields = requiredFieldsFor(effectiveType);
 		const missing = fields.filter(({ key }) => !r[key]).map(({ label }) => label);
-		return { ...r, missing, complete: missing.length === 0, status: r.status ?? 'pending' };
+		const siteProfile = profileByName.get(nameKey(`${r.first_name} ${r.last_name}`)) ?? null;
+		return {
+			...r,
+			missing,
+			complete: missing.length === 0,
+			status: r.status ?? 'pending',
+			siteProfile
+		};
 	});
 
 	const textRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`, {
@@ -180,6 +215,33 @@ export const actions: Actions = {
 			const errorBody = await res.json().catch(() => null);
 			console.error('Directus Registration update failed:', res.status, JSON.stringify(errorBody));
 			return fail(500, { error: 'La mise à jour a échoué.' });
+		}
+
+		return { success: true };
+	},
+	updateStats: async ({ request, fetch }) => {
+		const data = await request.formData();
+		const profileId = String(data.get('profile_id') ?? '');
+
+		if (!profileId) {
+			return fail(400, { error: 'Aucune fiche du site liée à ce joueur.' });
+		}
+
+		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Players/${profileId}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+			body: JSON.stringify({
+				height: numOrNull(data.get('height')),
+				goals: numOrNull(data.get('goals')),
+				assists: numOrNull(data.get('assists')),
+				foot: String(data.get('foot') ?? '') || null
+			})
+		});
+
+		if (!res.ok) {
+			const errorBody = await res.json().catch(() => null);
+			console.error('Directus Players update failed:', res.status, JSON.stringify(errorBody));
+			return fail(500, { error: "Les statistiques n'ont pas pu être enregistrées." });
 		}
 
 		return { success: true };
