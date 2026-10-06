@@ -27,7 +27,7 @@ function wrapEmail(content: string): string {
 			<div style="padding:24px 32px; background-color:#f4f5f7; text-align:center; border-top:1px solid #e5e5ef;">
 				<p style="margin:0 0 8px; font-size:13px; color:#555;">L'équipe Brussels Summit Academy</p>
 				<p style="margin:0 0 12px; font-size:12px; color:#888;">
-					Rue de Ransbeek 227, 1120 Bruxelles &middot; +32 491 32 89 86<br/>
+					Rue de Ransbeek 227, 1020 Bruxelles &middot; +32 491 32 89 86<br/>
 					<a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9; text-decoration:none;">brussels@summitacademy-info.com</a>
 				</p>
 				<p style="margin:0; font-size:12px;">
@@ -65,7 +65,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 				</tr>
 				<tr>
 					<td style="padding:4px 0; color:#555;">Lieu</td>
-					<td style="padding:4px 0; font-weight:600;">Centre Nelson Mandela<br/>Rue de Ransbeek 227, 1120 Bruxelles</td>
+					<td style="padding:4px 0; font-weight:600;">Centre Nelson Mandela<br/>Rue de Ransbeek 227, 1020 Bruxelles</td>
 				</tr>
 			</table>
 			<p style="margin:0 0 8px; font-weight:600;">À apporter le jour J :</p>
@@ -128,7 +128,7 @@ export async function sendTalentDayReminderEmail(opts: {
 }) {
 	const content = `
 		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Salut ${opts.firstName},</h2>
-		<p>Petit rappel : le Talent Day a lieu <strong>demain, le ${opts.date}</strong>, de 15h30 à 18h45 au Centre Nelson Mandela (Rue de Ransbeek 227, 1120 Bruxelles).</p>
+		<p>Petit rappel : le Talent Day a lieu <strong>demain, le ${opts.date}</strong>, de 15h30 à 18h45 au Centre Nelson Mandela (Rue de Ransbeek 227, 1020 Bruxelles).</p>
 		<p>N'oublie pas ta tenue de sport, tes crampons, ta carte d'identité originale et une bouteille d'eau.</p>
 		<p style="margin-top:24px;">À demain,<br/>L'équipe Brussels Summit Academy</p>
 	`;

@@ -39,7 +39,7 @@
 		address: {
 			'@type': 'PostalAddress',
 			streetAddress: 'Rue de Ransbeek 227',
-			postalCode: '1120',
+			postalCode: '1020',
 			addressLocality: 'Bruxelles',
 			addressCountry: 'BE'
 		},
