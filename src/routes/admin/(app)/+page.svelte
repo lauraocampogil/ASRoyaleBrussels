@@ -8,6 +8,13 @@
 	let editingId = $state<number | null>(null);
 	let genderFilter = $state<'all' | 'fille' | 'garcon'>('all');
 
+	function normGender(g: string | null | undefined): 'fille' | 'garcon' | null {
+		const v = (g ?? '').toString().trim().toLowerCase();
+		if (['fille', 'femme', 'female', 'f', 'girl', 'woman'].includes(v)) return 'fille';
+		if (['garcon', 'garçon', 'homme', 'male', 'm', 'boy', 'man'].includes(v)) return 'garcon';
+		return null;
+	}
+
 	let viewMode = $derived(
 		(page.url.searchParams.get('view') as
 			'overview' | 'talent_days' | 'academie' | 'inscrits' | 'stats') ?? 'overview'
@@ -60,9 +67,10 @@
 	}
 
 	function genderLabel(g: string | null) {
-		if (g === 'fille') return 'Femme';
-		if (g === 'garcon') return 'Homme';
-		return '—';
+		const n = normGender(g);
+		if (n === 'fille') return 'Femme';
+		if (n === 'garcon') return 'Homme';
+		return 'Non renseigné';
 	}
 
 	function divisionLabel(d: string | null) {
@@ -83,8 +91,12 @@
 	);
 	let acceptedPlayers = $derived(data.players.filter((p: any) => p.status === 'accepted'));
 
-	let femaleCount = $derived(data.players.filter((p: any) => p.gender === 'fille').length);
-	let maleCount = $derived(data.players.filter((p: any) => p.gender === 'garcon').length);
+	let femaleCount = $derived(
+		data.players.filter((p: any) => normGender(p.gender) === 'fille').length
+	);
+	let maleCount = $derived(
+		data.players.filter((p: any) => normGender(p.gender) === 'garcon').length
+	);
 	let genderKnownTotal = $derived(femaleCount + maleCount);
 
 	let pendingCount = $derived(data.players.filter((p: any) => p.status === 'pending').length);
@@ -118,7 +130,7 @@
 	let filteredPlayers = $derived(
 		genderFilter === 'all'
 			? baseFiltered
-			: baseFiltered.filter((p: any) => p.gender === genderFilter)
+			: baseFiltered.filter((p: any) => normGender(p.gender) === genderFilter)
 	);
 
 	// Dans la liste "Joueurs inscrits" (mixte), on sait s'il faut montrer les colonnes
@@ -137,7 +149,7 @@
 	let statsPlayers = $derived(
 		acceptedPlayers.filter(
 			(p: any) =>
-				(genderFilter === 'all' || p.gender === genderFilter) &&
+				(genderFilter === 'all' || normGender(p.gender) === genderFilter) &&
 				statsKey(`${p.first_name} ${p.last_name}`).includes(statsKey(statsSearch.trim()))
 		)
 	);

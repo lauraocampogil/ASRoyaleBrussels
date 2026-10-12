@@ -70,7 +70,19 @@ export async function load() {
 					email: p.email,
 					photo: assetUrl(p.photo, { width: 700 }),
 					highlight_video: assetUrl(p.highlight_video),
-					gender: p.gender,
+					gender: ['fille', 'femme', 'female', 'f'].includes(
+						String(p.gender ?? '')
+							.trim()
+							.toLowerCase()
+					)
+						? 'female'
+						: ['garcon', 'garçon', 'homme', 'male', 'm'].includes(
+									String(p.gender ?? '')
+										.trim()
+										.toLowerCase()
+							  )
+							? 'male'
+							: '',
 					goals: p.goals,
 					assists: p.assists,
 					games: p.games,
