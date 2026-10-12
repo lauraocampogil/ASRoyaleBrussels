@@ -7,11 +7,20 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	let activeTab = $state<'talent_days' | 'academie'>('academie');
+	let activeTab = $state<'talent_days' | 'academie'>('talent_days');
+
+	let acceptedLink = $derived(
+		page.url.searchParams.get('acces') === 'accepte' &&
+			page.url.searchParams.get('type') === 'academie'
+	);
 
 	$effect(() => {
 		const typeParam = page.url.searchParams.get('type');
-		if (!data.talentDayActive) {
+		if (acceptedLink) {
+			activeTab = 'academie';
+		} else if (!data.academyActive) {
+			activeTab = 'talent_days';
+		} else if (!data.talentDayActive) {
 			activeTab = 'academie';
 		} else if (typeParam === 'academie' || typeParam === 'talent_days') {
 			activeTab = typeParam;
@@ -114,7 +123,7 @@
 			Les inscriptions sont gratuites.
 		</p>
 
-		{#if data.talentDayActive}
+		{#if data.talentDayActive && data.academyActive}
 			<div class="mb-10 flex overflow-hidden rounded border border-dark">
 				<button
 					type="button"
@@ -143,11 +152,21 @@
 			{/if}
 		{/if}
 
+		{#if data.talentDayActive && !data.academyActive && !acceptedLink && data.talentDayDate}
+			<p class="mb-8 text-center text-sm text-dark/60">
+				Prochaine session : <span class="font-semibold text-primary">{data.talentDayDate}</span>
+			</p>
+		{/if}
+
 		{#if form?.success}
 			<div class="rounded border border-primary bg-primary/5 p-6 text-center">
 				<p class="font-clash text-title-md text-primary">Demande envoyée !</p>
 				<p class="mt-2 text-dark/70">On te recontacte très vite.</p>
 			</div>
+		{:else if !data.talentDayActive && !data.academyActive && !acceptedLink}
+			<p class="rounded border border-dark/20 p-6 text-center text-dark/70">
+				Les inscriptions sont fermées pour le moment. Reviens bientôt !
+			</p>
 		{:else}
 			<form
 				method="POST"

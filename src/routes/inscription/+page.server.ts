@@ -10,6 +10,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	const { data } = await res.json();
 
 	const talentDayActive = data?.talent_day_active ?? false;
+	const academyActive = data?.academy_active ?? false;
 	const talentDayDate = data?.talent_day_date
 		? new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' }).format(
 				new Date(data.talent_day_date)
@@ -23,6 +24,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
 			? `${PUBLIC_DIRECTUS_URL}/assets/${data.logo}?width=160&quality=80&format=webp`
 			: '',
 		talentDayActive,
+		academyActive,
 		talentDayDate
 	};
 };
@@ -72,6 +74,21 @@ export const actions: Actions = {
 			email: data.get('email')?.toString() ?? '',
 			phone: data.get('phone')?.toString() ?? ''
 		};
+
+		if (isAcademie) {
+			const settingsRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
+			const settings = await settingsRes.json().catch(() => null);
+			if (!settings?.data?.academy_active) {
+				const accepted = values.email ? await findAcceptedByEmail(values.email) : null;
+				if (!accepted) {
+					return fail(403, {
+						error:
+							"Les inscriptions à l'académie sont réservées pour le moment aux joueurs acceptés après le Talent Day. Utilise l'email avec lequel tu t'es inscrit(e).",
+						values
+					});
+				}
+			}
+		}
 
 		// Champs communs aux deux formulaires
 		if (

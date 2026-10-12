@@ -108,7 +108,7 @@ export async function sendAcceptanceEmail(opts: { to: string; firstName: string 
 		<p>Nous avons le plaisir de t'informer que ta candidature a été acceptée. Bienvenue dans l'académie Brussels Summit !</p>
 		<p>Nous reviendrons vers toi très prochainement avec les prochaines étapes pour démarrer ton parcours avec nous.</p>
 		<p>Pour l'instant, tu peux déjà compléter ta fiche via le lien
-			<a href="https://brussels-summitacademy.be/inscription?type=academie" style="color:#1807b9; font-weight:600;">« Rejoindre l'académie »</a>,
+			<a href="https://brussels-summitacademy.be/inscription?type=academie&acces=accepte" style="color:#1807b9; font-weight:600;">« Rejoindre l'académie »</a>,
 			afin que nous puissions procéder à ton inscription définitive à l'académie.
 		</p>
 		<p style="margin-top:24px;">À très vite,<br/>L'équipe Brussels Summit Academy</p>
