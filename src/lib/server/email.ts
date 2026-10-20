@@ -132,14 +132,14 @@ export async function sendCorrectionEmail(opts: { to: string; firstName: string 
 	const content = `
 		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Bonjour ${opts.firstName},</h2>
 		<p>Tu as reçu récemment un email t'annonçant ton acceptation à l'académie. Cet email a été envoyé par erreur, et nous nous en excusons.</p>
-		<p>Ta candidature est toujours en cours d'examen. Nous reviendrons vers toi prochainement.</p>
-		<p>Tu restes le bienvenu au Talent Day du dimanche 1er novembre, de 15h30 à 18h45 (Rue de Ransbeek 227, 1020 Bruxelles). L'inscription est gratuite.</p>
+		<p>Ta candidature est toujours en cours d'examen.</p>
+		<p>Tu es donc attendu au Talent Day du dimanche 1er novembre, de 15h30 à 18h45 (Rue de Ransbeek 227, 1020 Bruxelles). L'inscription est gratuite.</p>
 		<p style="margin-top:24px;">Merci de ta compréhension,<br/>L'équipe Brussels Summit Academy</p>
 	`;
 	await send({
 		from: env.RESEND_FROM as string,
 		to: opts.to,
-		subject: 'Correction : ta candidature à Brussels Summit Academy',
+		subject: 'Correction: ta candidature à Brussels Summit Academy',
 		html: wrapEmail(content)
 	});
 }
