@@ -1,5 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { PUBLIC_DIRECTUS_URL } from '$env/static/public';
+import { env } from '$env/dynamic/private';
+import { cleanInstagram } from '$lib/instagram';
 import type { Actions, PageServerLoad } from './$types';
 import { sendRegistrationConfirmationEmail } from '$lib/server/email';
 import { looksLikeIdDocument } from '$lib/server/idVerification';
@@ -71,8 +73,9 @@ export const actions: Actions = {
 			postal_code: data.get('postal_code')?.toString() || null,
 			current_club: data.get('current_club')?.toString() || null,
 			division: data.get('division')?.toString() || null,
-			email: data.get('email')?.toString() ?? '',
-			phone: data.get('phone')?.toString() ?? ''
+			email: (data.get('email')?.toString() ?? '').trim().toLowerCase(),
+			phone: data.get('phone')?.toString() ?? '',
+			instagram: cleanInstagram(data.get('instagram')?.toString())
 		};
 
 		if (isAcademie) {
@@ -101,6 +104,21 @@ export const actions: Actions = {
 			!values.phone
 		) {
 			return fail(400, { error: 'Merci de remplir tous les champs obligatoires.', values });
+		}
+
+		const emailConfirm = (data.get('email_confirm')?.toString() ?? '').trim().toLowerCase();
+		if (values.email !== emailConfirm) {
+			return fail(400, {
+				error: 'Les deux adresses email ne correspondent pas. Vérifie ton email.',
+				values
+			});
+		}
+
+		if (!values.instagram) {
+			return fail(400, {
+				error: 'Indique ton compte Instagram, par exemple @brusselssummitacademy.',
+				values
+			});
 		}
 
 		// Champs obligatoires uniquement pour "Rejoindre l'académie"
@@ -193,7 +211,10 @@ export const actions: Actions = {
 
 		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}`
+			},
 			body: JSON.stringify({
 				...values,
 				id_card_front: idCardFrontId,
@@ -206,6 +227,9 @@ export const actions: Actions = {
 			console.error('Directus Registration insert failed:', res.status, JSON.stringify(errorBody));
 			return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
 		}
+
+		const created = await res.json().catch(() => null);
+		const registrationId = created?.data?.id;
 
 		let talentDayDate = '';
 		if (values.type === 'talent_days') {
@@ -221,6 +245,7 @@ export const actions: Actions = {
 		}
 
 		const emailType = values.type === 'talent_days' ? 'talent_days' : 'academie';
+		let emailSent = false;
 		try {
 			await sendRegistrationConfirmationEmail({
 				to: values.email,
@@ -228,8 +253,21 @@ export const actions: Actions = {
 				type: emailType,
 				talentDayDate: talentDayDate || undefined
 			});
+			emailSent = true;
 		} catch (err) {
 			console.error('Confirmation email failed:', err);
+		}
+
+		// On garde la trace dans Directus pour que le staff voie qui n'a pas reçu son email.
+		if (registrationId) {
+			await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${registrationId}`, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}`
+				},
+				body: JSON.stringify({ email_envoye: emailSent })
+			}).catch((err) => console.error('email_envoye update failed:', err));
 		}
 
 		return { success: true };

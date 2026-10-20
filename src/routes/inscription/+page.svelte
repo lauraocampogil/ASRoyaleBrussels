@@ -240,6 +240,34 @@
 					</label>
 
 					<label class="flex flex-col gap-2">
+						<span class="text-dark/70">Confirme ton email</span>
+						<input
+							type="email"
+							name="email_confirm"
+							required
+							autocomplete="off"
+							onpaste={(e) => e.preventDefault()}
+							class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+						/>
+						<span class="text-xs text-dark-accent"
+							>Écris-le à nouveau pour éviter une faute de frappe</span
+						>
+					</label>
+					<label class="flex flex-col gap-2">
+						<span class="text-dark/70">Compte Instagram</span>
+						<input
+							name="instagram"
+							required
+							placeholder="@ton_compte"
+							value={form?.values?.instagram ?? ''}
+							class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+						/>
+						<span class="text-xs text-dark-accent"
+							>Pour te contacter si ton email ne fonctionne pas</span
+						>
+					</label>
+
+					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Date de naissance</span>
 						<input
 							type="date"

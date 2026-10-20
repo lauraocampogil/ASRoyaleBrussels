@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
+	import { cleanInstagram } from '$lib/instagram';
 
 	let { data }: { data: PageData } = $props();
 	let editingId = $state<number | null>(null);
@@ -64,6 +65,23 @@
 		if (status === 'accepted') return 'Accepté';
 		if (status === 'rejected') return 'Refusé';
 		return 'En attente';
+	}
+
+	// Demande une confirmation avant tout changement de statut qui envoie un email.
+	function confirmStatusChange(player: any, next: string) {
+		const name = `${player.first_name} ${player.last_name}`;
+		if (next === 'accepted' && player.status !== 'accepted') {
+			return confirm(`Accepter ${name} ?\n\nUn email d'acceptation sera envoyé à ${player.email}.`);
+		}
+		if (next === 'rejected' && player.status !== 'rejected') {
+			return confirm(`Refuser ${name} ?\n\nUn email de refus sera envoyé à ${player.email}.`);
+		}
+		if (next === 'pending_correction') {
+			return confirm(
+				`Remettre ${name} en attente ?\n\nUn email « envoyé par erreur » sera envoyé à ${player.email}.`
+			);
+		}
+		return true;
 	}
 
 	function genderLabel(g: string | null) {
@@ -161,7 +179,14 @@
 		<select
 			name="status"
 			value={player.status}
-			onchange={(e) => e.currentTarget.form?.requestSubmit()}
+			onchange={(e) => {
+				const el = e.currentTarget;
+				if (!confirmStatusChange(player, el.value)) {
+					el.value = player.status;
+					return;
+				}
+				el.form?.requestSubmit();
+			}}
 			class="w-full min-w-32.5 rounded-full border px-3 py-2 text-sm font-medium {statusClasses(
 				player.status
 			)}"
@@ -169,6 +194,9 @@
 			<option value="pending">En attente</option>
 			<option value="accepted">Accepté</option>
 			<option value="rejected">Refusé</option>
+			{#if player.status === 'accepted'}
+				<option value="pending_correction">En attente + email « envoyé par erreur »</option>
+			{/if}
 		</select>
 	</form>
 	<span class="hidden text-sm font-medium print:inline">{statusLabel(player.status)}</span>
@@ -262,6 +290,15 @@
 			<input
 				name="phone"
 				value={player.phone}
+				class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
+			/>
+		</label>
+		<label class="text-xs text-dark-accent">
+			Instagram
+			<input
+				name="instagram"
+				value={player.instagram ?? ''}
+				placeholder="@pseudo"
 				class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
 			/>
 		</label>
@@ -776,6 +813,18 @@
 								<div>
 									<p class="font-medium text-dark">{player.first_name} {player.last_name}</p>
 									<p class="text-xs text-dark-accent">{player.email}</p>
+									{#if player.email_envoye === false}
+										<p class="text-xs font-medium text-red-600">Email de confirmation non envoyé</p>
+									{/if}
+									{#if cleanInstagram(player.instagram)}
+										<a
+											href={`https://instagram.com/${cleanInstagram(player.instagram)}`}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="text-xs font-medium text-primary underline"
+											>@{cleanInstagram(player.instagram)}</a
+										>
+									{/if}
 								</div>
 							</div>
 							<span class="shrink-0 rounded-full bg-[#f4f5f7] px-2 py-1 text-xs text-dark-accent">
@@ -887,6 +936,10 @@
 							>
 							<th
 								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+								>Instagram</th
+							>
+							<th
+								class="whitespace-nowrap px-5 py-4 text-xs font-medium uppercase tracking-wide text-dark-accent/70 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 								>Poste</th
 							>
 							<th
@@ -963,8 +1016,28 @@
 								>
 								<td
 									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
-									>{player.email}</td
+									>{player.email}{#if player.email_envoye === false}
+										<span
+											class="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 print:hidden"
+											title="L'email de confirmation n'a pas pu être envoyé">Email non envoyé</span
+										>
+									{/if}</td
 								>
+								<td
+									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
+								>
+									{#if cleanInstagram(player.instagram)}
+										<a
+											href={`https://instagram.com/${cleanInstagram(player.instagram)}`}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="text-primary underline"
+											>@{cleanInstagram(player.instagram)}</a
+										>
+									{:else}
+										—
+									{/if}
+								</td>
 								<td
 									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
 									>{@render valueOrMissing(player.preferred_position)}</td
@@ -1008,7 +1081,7 @@
 							</tr>
 							{#if editingId === player.id}
 								<tr class="border-t border-dark-accent/10 print:hidden">
-									<td colspan="14" class="px-5 pb-4">{@render editForm(player)}</td>
+									<td colspan="15"class="px-5 pb-4">{@render editForm(player)}</td>
 								</tr>
 							{/if}
 						{/each}

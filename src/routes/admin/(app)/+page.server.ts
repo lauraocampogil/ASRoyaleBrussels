@@ -1,7 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { PUBLIC_DIRECTUS_URL } from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { sendAcceptanceEmail, sendRejectionEmail } from '$lib/server/email';
+import { sendAcceptanceEmail, sendRejectionEmail, sendCorrectionEmail } from '$lib/server/email';
+import { cleanInstagram } from '$lib/instagram';
 import type { Actions, PageServerLoad } from './$types';
 
 async function uploadFile(file: File, fetchFn: typeof fetch): Promise<string> {
@@ -130,7 +131,16 @@ export const actions: Actions = {
 	updateStatus: async ({ request, fetch }) => {
 		const data = await request.formData();
 		const id = data.get('id');
-		const status = String(data.get('status') ?? 'pending');
+		const rawStatus = String(data.get('status') ?? 'pending');
+		// "pending_correction" = remettre en attente ET envoyer l'email « envoyé par erreur »
+		const wantsCorrection = rawStatus === 'pending_correction';
+		const status = wantsCorrection ? 'pending' : rawStatus;
+
+		// Statut actuel : on n'envoie un email que si le statut change réellement.
+		const prevRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=status`, {
+			headers: getAuthHeaders()
+		});
+		const prevStatus = prevRes.ok ? ((await prevRes.json()).data?.status ?? 'pending') : null;
 
 		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
 			method: 'PATCH',
@@ -149,17 +159,21 @@ export const actions: Actions = {
 
 		const { data: player } = await res.json();
 
+		let emailFailed = false;
 		try {
-			if (status === 'accepted') {
+			if (status === 'accepted' && prevStatus !== 'accepted') {
 				await sendAcceptanceEmail({ to: player.email, firstName: player.first_name });
-			} else if (status === 'rejected') {
+			} else if (status === 'rejected' && prevStatus !== 'rejected') {
 				await sendRejectionEmail({ to: player.email, firstName: player.first_name });
+			} else if (wantsCorrection && prevStatus === 'accepted') {
+				await sendCorrectionEmail({ to: player.email, firstName: player.first_name });
 			}
 		} catch (err) {
 			console.error('Status email failed:', err);
+			emailFailed = true;
 		}
 
-		return { success: true };
+		return { success: true, emailFailed };
 	},
 
 	logout: async ({ cookies }) => {
@@ -177,6 +191,7 @@ export const actions: Actions = {
 			birth_date: String(data.get('birth_date') ?? ''),
 			gender: String(data.get('gender') ?? ''),
 			phone: String(data.get('phone') ?? ''),
+			instagram: cleanInstagram(String(data.get('instagram') ?? '')),
 			preferred_position: String(data.get('preferred_position') ?? ''),
 			current_club: String(data.get('current_club') ?? ''),
 			division: String(data.get('division') ?? ''),

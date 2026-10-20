@@ -10,6 +10,13 @@ function getResend(): Resend {
 	return resendClient;
 }
 
+// Resend ne lève pas d'exception en cas de refus : il renvoie { error }.
+// Ce helper transforme cette erreur en vraie exception pour qu'elle soit visible.
+async function send(opts: { from: string; to: string; subject: string; html: string }) {
+	const { error } = await getResend().emails.send(opts);
+	if (error) throw new Error(`${error.name}: ${error.message}`);
+}
+
 const SITE_URL = 'https://brussels-summitacademy.be';
 const LOGO_URL = `${SITE_URL}/assets/images/logo-email.png`;
 
@@ -61,7 +68,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 				</tr>
 				<tr>
 					<td style="padding:4px 0; color:#555;">Horaire</td>
-					<td style="padding:4px 0; font-weight:600;">15h00 — 18h45</td>
+					<td style="padding:4px 0; font-weight:600;">15h30 — 18h45</td>
 				</tr>
 				<tr>
 					<td style="padding:4px 0; color:#555;">Lieu</td>
@@ -78,7 +85,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 
 			<p style="margin-top:24px;">À très vite,<br/>L'équipe Brussels Summit Academy</p>
 		`;
-		await getResend().emails.send({
+		await send({
 			from: env.RESEND_FROM as string,
 			to: opts.to,
 			subject,
@@ -94,7 +101,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 		<p>Notre équipe va examiner ton dossier avec attention et reviendra vers toi rapidement avec une réponse.</p>
 		<p style="margin-top:24px;">À bientôt,<br/>L'équipe Brussels Summit Academy</p>
 	`;
-	await getResend().emails.send({
+	await send({
 		from: env.RESEND_FROM as string,
 		to: opts.to,
 		subject,
@@ -113,10 +120,26 @@ export async function sendAcceptanceEmail(opts: { to: string; firstName: string 
 		</p>
 		<p style="margin-top:24px;">À très vite,<br/>L'équipe Brussels Summit Academy</p>
 	`;
-	await getResend().emails.send({
+	await send({
 		from: env.RESEND_FROM as string,
 		to: opts.to,
 		subject: "Félicitations, tu es accepté(e) dans l'académie !",
+		html: wrapEmail(content)
+	});
+}
+
+export async function sendCorrectionEmail(opts: { to: string; firstName: string }) {
+	const content = `
+		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Bonjour ${opts.firstName},</h2>
+		<p>Tu as reçu récemment un email t'annonçant ton acceptation à l'académie. Cet email a été envoyé par erreur, et nous nous en excusons.</p>
+		<p>Ta candidature est toujours en cours d'examen. Nous reviendrons vers toi prochainement.</p>
+		<p>Tu restes le bienvenu au Talent Day du dimanche 1er novembre, de 15h30 à 18h45 (Rue de Ransbeek 227, 1020 Bruxelles). L'inscription est gratuite.</p>
+		<p style="margin-top:24px;">Merci de ta compréhension,<br/>L'équipe Brussels Summit Academy</p>
+	`;
+	await send({
+		from: env.RESEND_FROM as string,
+		to: opts.to,
+		subject: 'Correction : ta candidature à Brussels Summit Academy',
 		html: wrapEmail(content)
 	});
 }
@@ -132,7 +155,7 @@ export async function sendTalentDayReminderEmail(opts: {
 		<p>N'oublie pas ta tenue de sport, tes crampons, ta carte d'identité originale et une bouteille d'eau.</p>
 		<p style="margin-top:24px;">À demain,<br/>L'équipe Brussels Summit Academy</p>
 	`;
-	await getResend().emails.send({
+	await send({
 		from: env.RESEND_FROM as string,
 		to: opts.to,
 		subject: `Rappel : Talent Day demain, ${opts.date}`,
@@ -148,7 +171,7 @@ export async function sendRejectionEmail(opts: { to: string; firstName: string }
 		<p>Nous t'encourageons à retenter ta chance lors d'une prochaine session.</p>
 		<p style="margin-top:24px;">Cordialement,<br/>L'équipe Brussels Summit Academy</p>
 	`;
-	await getResend().emails.send({
+	await send({
 		from: env.RESEND_FROM as string,
 		to: opts.to,
 		subject: 'Réponse à ta candidature — Brussels Summit Academy',
