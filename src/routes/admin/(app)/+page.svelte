@@ -2,12 +2,39 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import type { SubmitFunction } from '@sveltejs/kit';
 	import type { PageData } from './$types';
 	import { cleanInstagram } from '$lib/instagram';
 
 	let { data }: { data: PageData } = $props();
 	let editingId = $state<number | null>(null);
 	let genderFilter = $state<'all' | 'fille' | 'garcon'>('all');
+	let resendResult = $state<Record<string, string>>({});
+
+	// Renvoi de l'email de confirmation : demande confirmation si un email est déjà parti
+	// (ou si son statut est inconnu), puis affiche le résultat à côté du joueur.
+	const resendEnhance =
+		(player: any): SubmitFunction =>
+		({ cancel, formElement }) => {
+			formElement.closest('details')?.removeAttribute('open');
+			if (
+				player.email_envoye !== false &&
+				!confirm(`Renvoyer l'email de confirmation à ${player.email} ?`)
+			) {
+				cancel();
+				return;
+			}
+			resendResult[player.id] = 'sending';
+			return async ({ result, update }) => {
+				resendResult[player.id] =
+					result.type === 'success'
+						? 'ok'
+						: result.type === 'failure'
+							? String((result.data as any)?.error ?? 'Erreur')
+							: 'Erreur';
+				await update({ reset: false });
+			};
+		};
 
 	function normGender(g: string | null | undefined): 'fille' | 'garcon' | null {
 		const v = (g ?? '').toString().trim().toLowerCase();
@@ -200,6 +227,64 @@
 		</select>
 	</form>
 	<span class="hidden text-sm font-medium print:inline">{statusLabel(player.status)}</span>
+{/snippet}
+
+{#snippet resendButton(player: any)}
+	{#if player.email_envoye === true || resendResult[player.id] === 'ok'}
+		<details class="relative ml-2 inline-block align-middle print:hidden">
+			<summary
+				class="cursor-pointer list-none rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
+				title="Resend a accepté l'email. Pour confirmer la livraison, ouvre Resend > Emails."
+				>✓ Email envoyé ▾</summary
+			>
+			<div
+				class="absolute left-0 z-20 mt-1 w-44 rounded-xl border border-dark-accent/10 bg-white p-1 shadow-lg"
+			>
+				<form method="POST" action="?/resendConfirmation" use:enhance={resendEnhance(player)}>
+					<input type="hidden" name="id" value={player.id} />
+					<button
+						type="submit"
+						class="w-full rounded-lg px-3 py-2 text-left text-xs text-dark hover:bg-[#f4f5f7]"
+					>
+						Renvoyer l'email
+					</button>
+				</form>
+			</div>
+		</details>
+	{:else}
+		<form
+			method="POST"
+			action="?/resendConfirmation"
+			use:enhance={resendEnhance(player)}
+			class="inline print:hidden"
+		>
+			<input type="hidden" name="id" value={player.id} />
+			{#if player.email_envoye === false}
+				<button
+					type="submit"
+					title={player.email_erreur
+						? `Erreur : ${player.email_erreur}`
+						: "L'email n'a pas été envoyé"}
+					class="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white"
+				>
+					Email non envoyé · Renvoyer
+				</button>
+			{:else}
+				<button
+					type="submit"
+					title="Statut inconnu : inscription faite avant le suivi des emails"
+					class="ml-2 rounded-full bg-[#f4f5f7] px-2 py-0.5 text-xs text-dark-accent hover:bg-dark-accent/10"
+				>
+					Renvoyer l'email
+				</button>
+			{/if}
+		</form>
+	{/if}
+	{#if resendResult[player.id] === 'sending'}
+		<span class="ml-2 text-xs text-dark-accent print:hidden">Envoi...</span>
+	{:else if resendResult[player.id] && resendResult[player.id] !== 'ok'}
+		<span class="ml-2 text-xs font-medium text-red-600 print:hidden">{resendResult[player.id]}</span>
+	{/if}
 {/snippet}
 
 {#snippet idCardButtons(player: any)}
@@ -813,9 +898,7 @@
 								<div>
 									<p class="font-medium text-dark">{player.first_name} {player.last_name}</p>
 									<p class="text-xs text-dark-accent">{player.email}</p>
-									{#if player.email_envoye === false}
-										<p class="text-xs font-medium text-red-600">Email de confirmation non envoyé</p>
-									{/if}
+									{@render resendButton(player)}
 									{#if cleanInstagram(player.instagram)}
 										<a
 											href={`https://instagram.com/${cleanInstagram(player.instagram)}`}
@@ -1016,12 +1099,7 @@
 								>
 								<td
 									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
-									>{player.email}{#if player.email_envoye === false}
-										<span
-											class="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 print:hidden"
-											title="L'email de confirmation n'a pas pu être envoyé">Email non envoyé</span
-										>
-									{/if}</td
+									>{player.email}{@render resendButton(player)}</td
 								>
 								<td
 									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"

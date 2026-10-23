@@ -59,7 +59,10 @@ function normalize(text: string): string {
 export async function looksLikeIdDocument(
 	file: File
 ): Promise<{ valid: boolean; reason?: string }> {
-	if (!file.type.startsWith('image/')) {
+	// Google Vision ne lit que certains formats. Pour les autres (ex. HEIC d'iPhone,
+	// qui arrive normalement déjà converti en JPEG par le navigateur) on ne bloque pas.
+	const SUPPORTED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
+	if (!SUPPORTED.includes(file.type)) {
 		return { valid: true };
 	}
 
@@ -89,6 +92,13 @@ export async function looksLikeIdDocument(
 		}
 
 		const data = await res.json();
+
+		// Si Vision n'a pas pu traiter l'image (format, taille…), ce n'est pas la faute du joueur.
+		if (data?.responses?.[0]?.error) {
+			console.error('Vision image error:', JSON.stringify(data.responses[0].error));
+			return { valid: true };
+		}
+
 		const rawText: string = data?.responses?.[0]?.fullTextAnnotation?.text ?? '';
 		const trimmed = rawText.trim();
 

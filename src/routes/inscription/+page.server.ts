@@ -38,23 +38,31 @@ async function uploadFile(file: File, fetchFn: typeof fetch): Promise<string> {
 	const uploadForm = new FormData();
 	uploadForm.append('file', fileBlob, file.name);
 
-	const uploadRes = await fetchFn(`${PUBLIC_DIRECTUS_URL}/files`, {
-		method: 'POST',
-		body: uploadForm
-	});
+	// Jusqu'à 3 essais : un 502 ponctuel du serveur Directus ne doit pas bloquer le joueur.
+	for (let attempt = 1; attempt <= 3; attempt++) {
+		const uploadRes = await fetchFn(`${PUBLIC_DIRECTUS_URL}/files`, {
+			method: 'POST',
+			body: uploadForm
+		}).catch(() => null);
 
-	if (!uploadRes.ok) {
-		const errorBody = await uploadRes.json().catch(() => null);
-		console.error('Directus file upload failed:', uploadRes.status, JSON.stringify(errorBody));
-		throw new Error('upload_failed');
+		if (uploadRes?.ok) {
+			const uploaded = await uploadRes.json();
+			return uploaded.data.id;
+		}
+
+		const errorBody = uploadRes ? await uploadRes.json().catch(() => null) : null;
+		console.error(
+			`Directus file upload failed (essai ${attempt}):`,
+			uploadRes?.status,
+			JSON.stringify(errorBody)
+		);
+		if (attempt < 3) await new Promise((r) => setTimeout(r, 700 * attempt));
 	}
-
-	const uploaded = await uploadRes.json();
-	return uploaded.data.id;
+	throw new Error('upload_failed');
 }
 
 export const actions: Actions = {
-	default: async ({ request, fetch }) => {
+	default: async ({ request, fetch, platform }) => {
 		const data = await request.formData();
 
 		const type = data.get('type')?.toString() ?? '';
@@ -188,8 +196,11 @@ export const actions: Actions = {
 		let idCardBackId: string;
 
 		try {
-			idCardFrontId = await uploadFile(idFront, fetch);
-			idCardBackId = await uploadFile(idBack, fetch);
+			// Les deux envois en parallèle (au lieu de l'un après l'autre)
+			[idCardFrontId, idCardBackId] = await Promise.all([
+				uploadFile(idFront, fetch),
+				uploadFile(idBack, fetch)
+			]);
 		} catch {
 			return fail(500, { error: "L'envoi de la carte d'identité a échoué, réessaie.", values });
 		}
@@ -211,10 +222,7 @@ export const actions: Actions = {
 
 		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration`, {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}`
-			},
+			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				...values,
 				id_card_front: idCardFrontId,
@@ -228,47 +236,70 @@ export const actions: Actions = {
 			return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
 		}
 
-		const created = await res.json().catch(() => null);
-		const registrationId = created?.data?.id;
+		// Email de confirmation : envoyé en arrière-plan pour que le joueur n'attende pas.
+		const sendConfirmation = async () => {
+			let talentDayDate = '';
+			if (values.type === 'talent_days') {
+				try {
+					const textRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
+					const { data: settings } = await textRes.json();
+					talentDayDate = settings?.talent_day_date
+						? new Intl.DateTimeFormat('fr-BE', {
+								day: 'numeric',
+								month: 'long',
+								year: 'numeric'
+							}).format(new Date(settings.talent_day_date))
+						: '';
+				} catch (err) {
+					console.error('RegistrationText fetch failed:', err);
+				}
+			}
 
-		let talentDayDate = '';
-		if (values.type === 'talent_days') {
-			const textRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
-			const { data: settings } = await textRes.json();
-			talentDayDate = settings?.talent_day_date
-				? new Intl.DateTimeFormat('fr-BE', {
-						day: 'numeric',
-						month: 'long',
-						year: 'numeric'
-					}).format(new Date(settings.talent_day_date))
-				: '';
-		}
+			let emailSent = false;
+			let emailError = '';
+			try {
+				await sendRegistrationConfirmationEmail({
+					to: values.email,
+					firstName: values.first_name,
+					type: values.type === 'talent_days' ? 'talent_days' : 'academie',
+					talentDayDate: talentDayDate || undefined
+				});
+				emailSent = true;
+			} catch (err) {
+				emailError = err instanceof Error ? err.message : String(err);
+				console.error('Confirmation email failed:', err);
+			}
 
-		const emailType = values.type === 'talent_days' ? 'talent_days' : 'academie';
-		let emailSent = false;
-		try {
-			await sendRegistrationConfirmationEmail({
-				to: values.email,
-				firstName: values.first_name,
-				type: emailType,
-				talentDayDate: talentDayDate || undefined
-			});
-			emailSent = true;
-		} catch (err) {
-			console.error('Confirmation email failed:', err);
-		}
+			// Trace dans Directus : le staff voit qui n'a pas reçu son email, et pourquoi.
+			try {
+				const auth = { Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}` };
+				// L'inscription est créée par le rôle Public (qui ne relit pas la ligne) :
+				// on retrouve son identifiant avec le jeton du site.
+				const findRes = await fetch(
+					`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[email][_eq]=${encodeURIComponent(values.email)}&sort=-id&limit=1&fields=id`,
+					{ headers: auth }
+				);
+				const registrationId = findRes.ok ? (await findRes.json()).data?.[0]?.id : null;
+				if (registrationId) {
+					const patch = (body: Record<string, unknown>) =>
+						fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${registrationId}`, {
+							method: 'PATCH',
+							headers: { 'Content-Type': 'application/json', ...auth },
+							body: JSON.stringify(body)
+						});
+					await patch({ email_envoye: emailSent });
+					if (!emailSent) await patch({ email_erreur: emailError.slice(0, 500) });
+				}
+			} catch (err) {
+				console.error('Registration email status update failed:', err);
+			}
+		};
 
-		// On garde la trace dans Directus pour que le staff voie qui n'a pas reçu son email.
-		if (registrationId) {
-			await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${registrationId}`, {
-				method: 'PATCH',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}`
-				},
-				body: JSON.stringify({ email_envoye: emailSent })
-			}).catch((err) => console.error('email_envoye update failed:', err));
-		}
+		const task = sendConfirmation().catch((err) => console.error('sendConfirmation failed:', err));
+		const p = platform as any;
+		const waitUntil = p?.ctx?.waitUntil?.bind(p.ctx) ?? p?.context?.waitUntil?.bind(p.context);
+		if (waitUntil) waitUntil(task);
+		else await task;
 
 		return { success: true };
 	}

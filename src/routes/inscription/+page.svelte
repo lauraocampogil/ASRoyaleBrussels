@@ -37,11 +37,61 @@
 	let idBackError = $state('');
 
 	const MIN_DIMENSION = 600;
+	const MAX_SIDE = 1800;
+	let converting = $state(false);
 
-	function handleIdCardChange(e: Event, side: 'front' | 'back') {
+	// Convertit toute photo (dont HEIC d'iPhone) en JPEG léger : lisible par le serveur
+	// et beaucoup plus rapide à envoyer.
+	async function toLightJpeg(file: File): Promise<File> {
+		if (!file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) return file;
+
+		let blob: Blob = file;
+		const isHeic = /heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+		if (isHeic) {
+			try {
+				// heic-to lit les HEIC récents des iPhone (l'ancienne lib heic2any échouait dessus)
+				const { heicTo } = await import('heic-to');
+				blob = await heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 });
+			} catch (err) {
+				console.warn('Conversion HEIC impossible :', err);
+				// Safari sait lire le HEIC nativement : on tente quand même avec le fichier d'origine.
+			}
+		}
+
+		try {
+			const bitmap = await createImageBitmap(blob);
+			const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+			const canvas = document.createElement('canvas');
+			canvas.width = Math.round(bitmap.width * scale);
+			canvas.height = Math.round(bitmap.height * scale);
+			canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+			const jpeg = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+			if (jpeg) {
+				return new File([jpeg], file.name.replace(/\.[^.]+$/, '') + '.jpg', {
+					type: 'image/jpeg'
+				});
+			}
+		} catch {
+			// conversion impossible : on garde le fichier tel quel
+		}
+		return blob === file
+			? file
+			: new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+	}
+
+	async function handleIdCardChange(e: Event, side: 'front' | 'back') {
 		const input = e.currentTarget as HTMLInputElement;
-		const file = input.files?.[0];
-		if (!file) return;
+		const original = input.files?.[0];
+		if (!original) return;
+
+		converting = true;
+		const file = await toLightJpeg(original);
+		if (file !== original) {
+			const dt = new DataTransfer();
+			dt.items.add(file);
+			input.files = dt.files;
+		}
+		converting = false;
 
 		const setPreview =
 			side === 'front'
@@ -391,7 +441,7 @@
 						type="file"
 						id="id_card_front"
 						name="id_card_front"
-						accept="image/*,.pdf"
+						accept="image/*,.pdf,.heic,.heif"
 						required
 						onchange={(e) => handleIdCardChange(e, 'front')}
 						class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
@@ -417,7 +467,7 @@
 						type="file"
 						id="id_card_back"
 						name="id_card_back"
-						accept="image/*,.pdf"
+						accept="image/*,.pdf,.heic,.heif"
 						required
 						onchange={(e) => handleIdCardChange(e, 'back')}
 						class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
@@ -440,8 +490,12 @@
 
 				<Button
 					type="submit"
-					disabled={submitting}
-					label={submitting ? 'Envoi...' : 'Envoyer ma demande'}
+					disabled={submitting || converting}
+					label={converting
+						? 'Préparation de la photo...'
+						: submitting
+							? 'Envoi...'
+							: 'Envoyer ma demande'}
 					variant="primary"
 				/>
 			</form>
