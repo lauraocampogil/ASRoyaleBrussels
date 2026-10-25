@@ -1,5 +1,6 @@
 <!-- Footer.svelte -->
 <script lang="ts">
+	import UnixCredit from '$lib/components/UnixCredit.svelte';
 	let {
 		email,
 		social_links = [],
@@ -71,17 +72,7 @@
 
 		<div class="font-jakarta flex flex-col text-xs text-white/50">
 			<span>© {new Date().getFullYear()} Tous droits réservés</span>
-			<span>
-				{credit_label}
-				<a
-					href="https://unixcreativestudio.com/"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="underline transition-colors hover:text-white"
-				>
-					Unix
-				</a>
-			</span>
+			<UnixCredit label={credit_label} />
 		</div>
 	</div>
 
@@ -94,17 +85,7 @@
 			>
 				<span>© {new Date().getFullYear()} Tous droits réservés</span>
 				<span class="hidden sm:inline">·</span>
-				<span>
-					{credit_label}
-					<a
-						href="https://unixcreativestudio.com/"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="underline transition-colors hover:text-white"
-					>
-						Unix
-					</a>
-				</span>
+				<UnixCredit label={credit_label} />
 			</div>
 		</div>
 
