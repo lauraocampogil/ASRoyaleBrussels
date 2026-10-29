@@ -68,7 +68,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 				</tr>
 				<tr>
 					<td style="padding:4px 0; color:#555;">Horaire</td>
-					<td style="padding:4px 0; font-weight:600;">15h30 — 18h45</td>
+					<td style="padding:4px 0; font-weight:600;">15h45 — 18h45</td>
 				</tr>
 				<tr>
 					<td style="padding:4px 0; color:#555;">Lieu</td>
@@ -151,7 +151,7 @@ export async function sendTalentDayReminderEmail(opts: {
 }) {
 	const content = `
 		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Salut ${opts.firstName},</h2>
-		<p>Petit rappel : le Talent Day a lieu <strong>demain, le ${opts.date}</strong>, de 15h30 à 18h45 au Centre Nelson Mandela (Rue de Ransbeek 227, 1020 Bruxelles).</p>
+		<p>Petit rappel : le Talent Day a lieu <strong>demain, le ${opts.date}</strong>, de 15h45 à 18h45 au Centre Nelson Mandela (Rue de Ransbeek 227, 1020 Bruxelles).</p>
 		<p>N'oublie pas ta tenue de sport, tes crampons, ta carte d'identité originale et une bouteille d'eau.</p>
 		<p style="margin-top:24px;">À demain,<br/>L'équipe Brussels Summit Academy</p>
 	`;
