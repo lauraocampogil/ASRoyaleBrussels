@@ -1,0 +1,16 @@
+name: Rappel Talent Day
+
+on:
+  schedule:
+    # 19:00 UTC = 20h00 à Bruxelles (heure d'hiver). La route n'envoie que la veille du Talent Day.
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+
+jobs:
+  reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler la route de rappel
+        run: |
+          curl -fsS -X POST "https://brussels-summitacademy.be/api/cron/talent-day-reminders" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
