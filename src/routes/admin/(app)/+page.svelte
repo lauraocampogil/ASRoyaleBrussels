@@ -12,6 +12,35 @@
 	let resendResult = $state<Record<string, string>>({});
 	let reminderResult = $state<Record<string, string>>({});
 
+	// Venue : la couleur change tout de suite (valeur locale), puis la page se met à jour.
+	let venueLocal = $state<Record<string, boolean | null>>({});
+	let venueError = $state<Record<string, string>>({});
+	const venueOf = (player: any): boolean | null =>
+		player.id in venueLocal ? venueLocal[player.id] : (player.venue ?? null);
+	function venueClasses(v: boolean | null) {
+		if (v === true) return 'bg-green-100 text-green-700 border-green-300';
+		if (v === false) return 'bg-red-100 text-red-700 border-red-300';
+		return 'bg-[#f4f5f7] text-dark-accent border-dark-accent/20';
+	}
+	const venueEnhance =
+		(player: any): SubmitFunction =>
+		({ formData }) => {
+			const raw = String(formData.get('venue') ?? '');
+			const previous = venueOf(player);
+			venueLocal[player.id] = raw === 'true' ? true : raw === 'false' ? false : null;
+			venueError[player.id] = '';
+			return async ({ result, update }) => {
+				if (result.type !== 'success') {
+					venueLocal[player.id] = previous;
+					venueError[player.id] =
+						result.type === 'failure'
+							? String((result.data as any)?.error ?? 'Erreur')
+							: 'Erreur';
+				}
+				await update({ reset: false });
+			};
+		};
+
 	// Rappel Talent Day, envoyé à la main : demande confirmation si déjà envoyé.
 	const reminderEnhance =
 		(player: any): SubmitFunction =>
@@ -337,25 +366,26 @@
 {/snippet}
 
 {#snippet venueSelect(player: any)}
-	<form method="POST" action="?/updateVenue" use:enhance class="mt-1 print:hidden">
+	<form method="POST" action="?/updateVenue" use:enhance={venueEnhance(player)} class="mt-1 print:hidden">
 		<input type="hidden" name="id" value={player.id} />
 		<select
 			name="venue"
-			value={player.venue === true ? 'true' : player.venue === false ? 'false' : ''}
+			value={venueOf(player) === true ? 'true' : venueOf(player) === false ? 'false' : ''}
 			onchange={(e) => e.currentTarget.form?.requestSubmit()}
-			class="w-full min-w-32.5 rounded-full border px-3 py-2 text-sm font-medium {player.venue === true
-				? 'border-green-300 bg-green-100 text-green-700'
-				: player.venue === false
-					? 'border-red-300 bg-red-100 text-red-700'
-					: 'border-dark-accent/20 bg-[#f4f5f7] text-dark-accent'}"
+			class="w-full min-w-32.5 rounded-full border px-3 py-2 text-sm font-medium {venueClasses(
+				venueOf(player)
+			)}"
 		>
 			<option value="">Venue : —</option>
 			<option value="true">Venu</option>
 			<option value="false">Pas venu</option>
 		</select>
+		{#if venueError[player.id]}
+			<span class="mt-1 block text-xs font-medium text-red-600">{venueError[player.id]}</span>
+		{/if}
 	</form>
 	<span class="hidden text-sm font-medium print:inline"
-		>{player.venue === true ? 'Venu' : player.venue === false ? 'Pas venu' : ''}</span
+		>{venueOf(player) === true ? 'Venu' : venueOf(player) === false ? 'Pas venu' : ''}</span
 	>
 {/snippet}
 
