@@ -11,6 +11,8 @@
 	let genderFilter = $state<'all' | 'fille' | 'garcon'>('all');
 	let resendResult = $state<Record<string, string>>({});
 	let reminderResult = $state<Record<string, string>>({});
+	let showAdd = $state(false);
+	let addError = $state('');
 
 	// Venue : la couleur change tout de suite (valeur locale), puis la page se met à jour.
 	let venueLocal = $state<Record<string, boolean | null>>({});
@@ -965,13 +967,31 @@
 					</select>
 				</div>
 
-				<button
-					type="button"
-					onclick={() => window.print()}
+				<div class="flex items-center gap-2 print:hidden">
+					{#if viewMode === 'talent_days'}
+						<button
+							type="button"
+							onclick={() => {
+								addError = '';
+								showAdd = true;
+							}}
+							title="Ajouter un joueur au Talent Day"
+							aria-label="Ajouter un joueur au Talent Day"
+							class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white transition-opacity hover:opacity-90"
+						>
+							<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+								<path d="M12 5v14M5 12h14" />
+							</svg>
+						</button>
+					{/if}
+					<button
+						type="button"
+						onclick={() => window.print()}
 					class="rounded-xl bg-[#f4f5f7] px-4 py-2 text-sm text-dark-accent transition-colors hover:bg-dark-accent/10 print:hidden"
 				>
-					Imprimer la liste
-				</button>
+							Imprimer la liste
+					</button>
+				</div>
 			</div>
 
 			{#if data.loadError}
@@ -1271,6 +1291,71 @@
 		</div>
 	{/if}
 </div>
+
+{#if showAdd}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 print:hidden"
+		role="dialog"
+		aria-modal="true"
+	>
+		<form
+			method="POST"
+			action="?/addPlayer"
+			use:enhance={() =>
+				async ({ result, update }) => {
+					if (result.type === 'success') {
+						showAdd = false;
+						await update();
+					} else {
+						addError =
+							result.type === 'failure'
+								? String((result.data as any)?.addError ?? 'Erreur')
+								: 'Erreur';
+					}
+				}}
+			class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+		>
+			<h2 class="font-clash mb-4 text-lg text-dark">Ajouter un joueur (Talent Day)</h2>
+			<div class="grid grid-cols-2 gap-3 text-sm">
+				<input name="first_name" required placeholder="Prénom *" class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2" />
+				<input name="last_name" required placeholder="Nom *" class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2" />
+				<select name="gender" class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2">
+					<option value="">Genre</option>
+					<option value="fille">Femme</option>
+					<option value="garcon">Homme</option>
+				</select>
+				<input name="birth_date" type="date" class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2" />
+				<input name="email" type="email" placeholder="Email" class="col-span-2 rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2" />
+				<input name="phone" placeholder="Téléphone" class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2" />
+				<input name="instagram" placeholder="Instagram" class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2" />
+				<select name="preferred_position" class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2">
+					<option value="">Poste</option>
+					<option value="GK">Gardien de but</option>
+					<option value="CB">Défenseur central</option>
+					<option value="LB_RB">Latéral</option>
+					<option value="LWB_RWB">Piston</option>
+					<option value="SW">Libéro</option>
+					<option value="CDM">Milieu défensif</option>
+					<option value="CM">Milieu central</option>
+					<option value="CAM">Milieu offensif</option>
+					<option value="LM_RM">Milieu latéral</option>
+					<option value="ST">Avant-centre</option>
+					<option value="LW_RW">Ailier</option>
+					<option value="CF">Second attaquant</option>
+					<option value="F9">Faux numéro 9</option>
+				</select>
+				<input name="current_club" placeholder="Club actuel" class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2" />
+			</div>
+			{#if addError}
+				<p class="mt-3 rounded-xl bg-red-100 px-3 py-2 text-xs text-red-700">{addError}</p>
+			{/if}
+			<div class="mt-5 flex justify-end gap-2">
+				<button type="button" onclick={() => (showAdd = false)} class="rounded-xl bg-[#f4f5f7] px-4 py-2 text-sm text-dark-accent">Annuler</button>
+				<button type="submit" class="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white">Ajouter</button>
+			</div>
+		</form>
+	</div>
+{/if}
 
 <style>
 	@media print {

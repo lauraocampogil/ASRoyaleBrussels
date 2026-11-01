@@ -309,6 +309,46 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
+	// Ajoute à la main un joueur au Talent Day (sans carte d'identité).
+	addPlayer: async ({ request, fetch }) => {
+		const data = await request.formData();
+		const str = (k: string) => String(data.get(k) ?? '').trim();
+		const first_name = str('first_name');
+		const last_name = str('last_name');
+		const email = str('email').toLowerCase();
+
+		if (!first_name || !last_name) {
+			return fail(400, { addError: 'Prénom et nom obligatoires.' });
+		}
+
+		const payload: Record<string, unknown> = {
+			type: 'talent_days',
+			first_name,
+			last_name,
+			email: email || null,
+			phone: str('phone') || null,
+			gender: str('gender') || null,
+			birth_date: str('birth_date') || null,
+			preferred_position: str('preferred_position') || null,
+			current_club: str('current_club') || null,
+			instagram: cleanInstagram(str('instagram')) || null
+		};
+
+		// Même chemin que le formulaire public : le rôle Public peut créer, le jeton du site non.
+		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload)
+		});
+		if (!res.ok) {
+			const errorBody = await res.json().catch(() => null);
+			console.error('Manual add failed:', res.status, JSON.stringify(errorBody));
+			const msg = errorBody?.errors?.[0]?.message;
+			return fail(500, { addError: `Ajout impossible${msg ? ` : ${msg}` : '.'}` });
+		}
+		return { success: true };
+	},
+
 	logout: async ({ cookies }) => {
 		cookies.delete('staff_session', { path: '/' });
 		throw redirect(303, '/admin/login');
