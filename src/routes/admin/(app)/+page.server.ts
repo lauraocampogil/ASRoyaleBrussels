@@ -5,7 +5,8 @@ import {
 	sendAcceptanceEmail,
 	sendRejectionEmail,
 	sendCorrectionEmail,
-	sendRegistrationConfirmationEmail
+	sendRegistrationConfirmationEmail,
+	sendTalentDayReminderEmail
 } from '$lib/server/email';
 import { cleanInstagram } from '$lib/instagram';
 import type { Actions, PageServerLoad } from './$types';
@@ -234,6 +235,77 @@ export const actions: Actions = {
 		if (!sent) await patch({ email_erreur: errorMessage.slice(0, 500) });
 
 		if (!sent) return fail(502, { error: `Email non envoyé : ${errorMessage}` });
+		return { success: true };
+	},
+
+	// Envoie le rappel du Talent Day à un joueur, à la main.
+	sendReminder: async ({ request, fetch }) => {
+		const data = await request.formData();
+		const id = data.get('id');
+
+		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
+			headers: getAuthHeaders()
+		});
+		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
+		const { data: r } = await res.json();
+
+		const textRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`, {
+			headers: getAuthHeaders()
+		});
+		const settings = textRes.ok ? (await textRes.json()).data : null;
+		if (!settings?.talent_day_date) return fail(400, { error: 'Date du Talent Day manquante.' });
+
+		const eventDate = new Date(settings.talent_day_date);
+		const dateLabel = new Intl.DateTimeFormat('fr-BE', {
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric'
+		}).format(eventDate);
+		const todayBrussels = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(
+			new Date()
+		);
+		const when = String(settings.talent_day_date).slice(0, 10) === todayBrussels ? "aujourd'hui" : 'demain';
+
+		try {
+			await sendTalentDayReminderEmail({
+				to: r.email,
+				firstName: r.first_name,
+				date: dateLabel,
+				when
+			});
+		} catch (err) {
+			console.error('Manual reminder failed:', err);
+			return fail(502, {
+				error: `Rappel non envoyé : ${err instanceof Error ? err.message : String(err)}`
+			});
+		}
+
+		await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+			body: JSON.stringify({ reminder_sent: true })
+		}).catch(() => null);
+
+		return { success: true };
+	},
+
+	// Présence au Talent Day : oui / non (ou vide pour annuler).
+	updateVenue: async ({ request, fetch }) => {
+		const data = await request.formData();
+		const id = data.get('id');
+		const v = String(data.get('venue') ?? '');
+		const venue = v === 'true' ? true : v === 'false' ? false : null;
+
+		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+			body: JSON.stringify({ venue })
+		});
+		if (!res.ok) {
+			const errorBody = await res.json().catch(() => null);
+			console.error('Directus venue update failed:', res.status, JSON.stringify(errorBody));
+			return fail(500, { error: 'La présence n\'a pas pu être enregistrée.' });
+		}
 		return { success: true };
 	},
 

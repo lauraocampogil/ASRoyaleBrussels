@@ -10,6 +10,31 @@
 	let editingId = $state<number | null>(null);
 	let genderFilter = $state<'all' | 'fille' | 'garcon'>('all');
 	let resendResult = $state<Record<string, string>>({});
+	let reminderResult = $state<Record<string, string>>({});
+
+	// Rappel Talent Day, envoyé à la main : demande confirmation si déjà envoyé.
+	const reminderEnhance =
+		(player: any): SubmitFunction =>
+		({ cancel }) => {
+			if (
+				player.reminder_sent === true &&
+				reminderResult[player.id] !== 'ok' &&
+				!confirm(`Le rappel a déjà été envoyé. Le renvoyer à ${player.email} ?`)
+			) {
+				cancel();
+				return;
+			}
+			reminderResult[player.id] = 'sending';
+			return async ({ result, update }) => {
+				reminderResult[player.id] =
+					result.type === 'success'
+						? 'ok'
+						: result.type === 'failure'
+							? String((result.data as any)?.error ?? 'Erreur')
+							: 'Erreur';
+				await update({ reset: false });
+			};
+		};
 
 	// Renvoi de l'email de confirmation : demande confirmation si un email est déjà parti
 	// (ou si son statut est inconnu), puis affiche le résultat à côté du joueur.
@@ -285,6 +310,56 @@
 	{:else if resendResult[player.id] && resendResult[player.id] !== 'ok'}
 		<span class="ml-2 text-xs font-medium text-red-600 print:hidden">{resendResult[player.id]}</span>
 	{/if}
+{/snippet}
+
+{#snippet reminderButton(player: any)}
+	{#if player.type === 'talent_days'}
+		<form method="POST" action="?/sendReminder" use:enhance={reminderEnhance(player)} class="inline print:hidden">
+			<input type="hidden" name="id" value={player.id} />
+			<button
+				type="submit"
+				class="ml-2 rounded-full px-2 py-0.5 text-xs font-medium {player.reminder_sent === true ||
+				reminderResult[player.id] === 'ok'
+					? 'bg-green-100 text-green-700'
+					: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}"
+			>
+				{player.reminder_sent === true || reminderResult[player.id] === 'ok'
+					? '✓ Rappel envoyé'
+					: 'Envoyer le rappel'}
+			</button>
+		</form>
+		{#if reminderResult[player.id] === 'sending'}
+			<span class="ml-2 text-xs text-dark-accent print:hidden">Envoi...</span>
+		{:else if reminderResult[player.id] && reminderResult[player.id] !== 'ok'}
+			<span class="ml-2 text-xs font-medium text-red-600 print:hidden">{reminderResult[player.id]}</span>
+		{/if}
+	{/if}
+{/snippet}
+
+{#snippet venueToggle(player: any)}
+	<form method="POST" action="?/updateVenue" use:enhance class="ml-2 inline-flex items-center gap-1 align-middle print:hidden">
+		<input type="hidden" name="id" value={player.id} />
+		<span class="text-xs text-dark-accent">Venu :</span>
+		<button
+			type="submit"
+			name="venue"
+			value={player.venue === true ? '' : 'true'}
+			class="rounded-full px-2 py-0.5 text-xs font-medium {player.venue === true
+				? 'bg-green-600 text-white'
+				: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}">Oui</button
+		>
+		<button
+			type="submit"
+			name="venue"
+			value={player.venue === false ? '' : 'false'}
+			class="rounded-full px-2 py-0.5 text-xs font-medium {player.venue === false
+				? 'bg-red-600 text-white'
+				: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}">Non</button
+		>
+	</form>
+	<span class="hidden text-xs print:inline"
+		>{player.venue === true ? 'Venu : oui' : player.venue === false ? 'Venu : non' : ''}</span
+	>
 {/snippet}
 
 {#snippet idCardButtons(player: any)}
@@ -898,7 +973,7 @@
 								<div>
 									<p class="font-medium text-dark">{player.first_name} {player.last_name}</p>
 									<p class="text-xs text-dark-accent">{player.email}</p>
-									{@render resendButton(player)}
+									{@render resendButton(player)}{@render reminderButton(player)}{@render venueToggle(player)}
 									{#if cleanInstagram(player.instagram)}
 										<a
 											href={`https://instagram.com/${cleanInstagram(player.instagram)}`}
@@ -1099,7 +1174,7 @@
 								>
 								<td
 									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
-									>{player.email}{@render resendButton(player)}</td
+									>{player.email}{@render resendButton(player)}{@render reminderButton(player)}{@render venueToggle(player)}</td
 								>
 								<td
 									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"

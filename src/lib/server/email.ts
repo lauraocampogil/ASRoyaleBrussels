@@ -68,7 +68,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 				</tr>
 				<tr>
 					<td style="padding:4px 0; color:#555;">Horaire</td>
-					<td style="padding:4px 0; font-weight:600;">15h50 — 18h45</td>
+					<td style="padding:4px 0; font-weight:600;">15h25 — 18h45</td>
 				</tr>
 				<tr>
 					<td style="padding:4px 0; color:#555;">Lieu</td>
@@ -133,7 +133,7 @@ export async function sendCorrectionEmail(opts: { to: string; firstName: string 
 		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Bonjour ${opts.firstName},</h2>
 		<p>Tu as reçu récemment un email t'annonçant ton acceptation à l'académie. Cet email a été envoyé par erreur, et nous nous en excusons.</p>
 		<p>Ta candidature est toujours en cours d'examen.</p>
-		<p>Tu es donc attendu au Talent Day du dimanche 1er novembre, de 15h50 à 18h45 (Rue de Ransbeek 227, 1120 Bruxelles). L'inscription est gratuite.</p>
+		<p>Tu es donc attendu au Talent Day du dimanche 1er novembre, de 15h25 à 18h45 (Rue de Ransbeek 227, 1120 Bruxelles). L'inscription est gratuite.</p>
 		<p style="margin-top:24px;">Merci de ta compréhension,<br/>L'équipe Brussels Summit Academy</p>
 	`;
 	await send({
@@ -148,17 +148,19 @@ export async function sendTalentDayReminderEmail(opts: {
 	to: string;
 	firstName: string;
 	date: string;
+	when?: 'demain' | "aujourd'hui";
 }) {
+	const when = opts.when ?? 'demain';
 	const content = `
 		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Salut ${opts.firstName},</h2>
-		<p>Petit rappel : le Talent Day a lieu <strong>demain, le ${opts.date}</strong>, de 15h50 à 18h45 au Centre Nelson Mandela (Rue de Ransbeek 227, 1120 Bruxelles).</p>
+		<p>Petit rappel : le Talent Day a lieu <strong>${when}, le ${opts.date}</strong>, de 15h25 à 18h45 au Centre Nelson Mandela (Rue de Ransbeek 227, 1120 Bruxelles).</p>
 		<p>N'oublie pas ta tenue de sport, tes crampons, ta carte d'identité originale et une bouteille d'eau.</p>
-		<p style="margin-top:24px;">À demain,<br/>L'équipe Brussels Summit Academy</p>
+		<p style="margin-top:24px;">${when === 'demain' ? 'À demain' : 'À tout à l\'heure'},<br/>L'équipe Brussels Summit Academy</p>
 	`;
 	await send({
 		from: env.RESEND_FROM as string,
 		to: opts.to,
-		subject: `Rappel : Talent Day demain, ${opts.date}`,
+		subject: `Rappel : Talent Day ${when}, ${opts.date}`,
 		html: wrapEmail(content)
 	});
 }
