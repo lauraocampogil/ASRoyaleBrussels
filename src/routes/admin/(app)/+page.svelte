@@ -336,29 +336,26 @@
 	{/if}
 {/snippet}
 
-{#snippet venueToggle(player: any)}
-	<form method="POST" action="?/updateVenue" use:enhance class="ml-2 inline-flex items-center gap-1 align-middle print:hidden">
+{#snippet venueSelect(player: any)}
+	<form method="POST" action="?/updateVenue" use:enhance class="mt-1 print:hidden">
 		<input type="hidden" name="id" value={player.id} />
-		<span class="text-xs text-dark-accent">Venu :</span>
-		<button
-			type="submit"
+		<select
 			name="venue"
-			value={player.venue === true ? '' : 'true'}
-			class="rounded-full px-2 py-0.5 text-xs font-medium {player.venue === true
-				? 'bg-green-600 text-white'
-				: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}">Oui</button
+			value={player.venue === true ? 'true' : player.venue === false ? 'false' : ''}
+			onchange={(e) => e.currentTarget.form?.requestSubmit()}
+			class="w-full min-w-32.5 rounded-full border px-3 py-2 text-sm font-medium {player.venue === true
+				? 'border-green-300 bg-green-100 text-green-700'
+				: player.venue === false
+					? 'border-red-300 bg-red-100 text-red-700'
+					: 'border-dark-accent/20 bg-[#f4f5f7] text-dark-accent'}"
 		>
-		<button
-			type="submit"
-			name="venue"
-			value={player.venue === false ? '' : 'false'}
-			class="rounded-full px-2 py-0.5 text-xs font-medium {player.venue === false
-				? 'bg-red-600 text-white'
-				: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}">Non</button
-		>
+			<option value="">Venue : —</option>
+			<option value="true">Venu</option>
+			<option value="false">Pas venu</option>
+		</select>
 	</form>
-	<span class="hidden text-xs print:inline"
-		>{player.venue === true ? 'Venu : oui' : player.venue === false ? 'Venu : non' : ''}</span
+	<span class="hidden text-sm font-medium print:inline"
+		>{player.venue === true ? 'Venu' : player.venue === false ? 'Pas venu' : ''}</span
 	>
 {/snippet}
 
@@ -973,7 +970,7 @@
 								<div>
 									<p class="font-medium text-dark">{player.first_name} {player.last_name}</p>
 									<p class="text-xs text-dark-accent">{player.email}</p>
-									{@render resendButton(player)}{@render reminderButton(player)}{@render venueToggle(player)}
+									{@render resendButton(player)}{@render reminderButton(player)}
 									{#if cleanInstagram(player.instagram)}
 										<a
 											href={`https://instagram.com/${cleanInstagram(player.instagram)}`}
@@ -1028,7 +1025,7 @@
 						{/if}
 
 						<div class="flex items-center gap-2">
-							<div class="flex-1">{@render statusSelect(player)}</div>
+							<div class="flex-1">{@render statusSelect(player)}{@render venueSelect(player)}</div>
 							<button
 								type="button"
 								onclick={() => (editingId = editingId === player.id ? null : player.id)}
@@ -1174,7 +1171,7 @@
 								>
 								<td
 									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
-									>{player.email}{@render resendButton(player)}{@render reminderButton(player)}{@render venueToggle(player)}</td
+									>{player.email}{@render resendButton(player)}{@render reminderButton(player)}</td
 								>
 								<td
 									class="whitespace-nowrap px-5 py-4 text-dark-accent print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
@@ -1219,7 +1216,7 @@
 								</td>
 								<td
 									class="px-5 py-4 print:whitespace-normal print:wrap-break-words print:px-2 print:py-2 print:text-xs"
-									>{@render statusSelect(player)}</td
+									>{@render statusSelect(player)}{@render venueSelect(player)}</td
 								>
 								<td class="px-5 py-4 print:hidden">{@render idCardButtons(player)}</td>
 								<td class="px-5 py-4 print:hidden">
