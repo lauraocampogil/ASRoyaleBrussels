@@ -118,6 +118,11 @@ export async function sendAcceptanceEmail(opts: {
 	const isFemale = /^(f|fille|femme|female|woman|girl)$/i.test((opts.gender ?? '').trim());
 	const isMale = /^(m|garcon|garçon|homme|male|man|boy)$/i.test((opts.gender ?? '').trim());
 	const monthly = isFemale ? '50' : isMale ? '80' : null;
+	const horaire = isFemale
+		? `<strong>${MAKEUP.girls}</strong>`
+		: isMale
+			? `<strong>${MAKEUP.boys}</strong>`
+			: `<strong>${MAKEUP.girls}</strong> pour les filles, <strong>${MAKEUP.boys}</strong> pour les garçons`;
 
 	const feeRows = `
 		<tr>
@@ -139,6 +144,20 @@ export async function sendAcceptanceEmail(opts: {
 	const content = `
 		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Félicitations ${opts.firstName} !</h2>
 		<p>Nous avons le plaisir de t'annoncer que ta candidature a été <strong>acceptée</strong>. Bienvenue chez Brussels Summit Academy !</p>
+
+		<p style="margin:24px 0 8px; font-weight:600;">On t'attend ce week-end !</p>
+		<p style="margin:0 0 8px;">Tu es attendu(e) pour une première séance avec nous, <strong>samedi 7 ou dimanche 8 novembre</strong> (au choix) :</p>
+		<table style="width:100%; border-collapse:collapse; margin:0 0 20px;">
+			<tr>
+				<td style="padding:4px 0; color:#555; width:90px;">Horaire</td>
+				<td style="padding:4px 0;">${horaire}</td>
+			</tr>
+			<tr>
+				<td style="padding:4px 0; color:#555;">Lieu</td>
+				<td style="padding:4px 0; font-weight:600;">Centre Nelson Mandela<br/>Rue de Ransbeek 227, 1120 Bruxelles</td>
+			</tr>
+		</table>
+		<p style="margin:0 0 20px; font-size:14px; color:#333;">Pense à apporter ta tenue de sport complète, tes crampons, ta carte d'identité originale et une bouteille d'eau. Dis-nous quel jour tu viens en écrivant à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
 
 		<p style="margin:24px 0 8px; font-weight:600;">Pour finaliser ton inscription :</p>
 		<ol style="margin:0 0 20px; padding-left:20px; color:#333;">
