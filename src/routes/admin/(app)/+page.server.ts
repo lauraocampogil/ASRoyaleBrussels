@@ -6,7 +6,8 @@ import {
 	sendRejectionEmail,
 	sendCorrectionEmail,
 	sendRegistrationConfirmationEmail,
-	sendTalentDayReminderEmail
+	sendTalentDayReminderEmail,
+	sendMakeupEmails
 } from '$lib/server/email';
 import { cleanInstagram } from '$lib/instagram';
 import type { Actions, PageServerLoad } from './$types';
@@ -379,6 +380,79 @@ export const actions: Actions = {
 			const errorBody = await patch.json().catch(() => null);
 			console.error('Payment update failed:', patch.status, JSON.stringify(errorBody));
 			return fail(500, { error: "Le paiement n'a pas pu être enregistré." });
+		}
+		return { success: true };
+	},
+
+	// Envoie l'email « viens te tester ce week-end » à tous les absents du Talent Day
+	// (présence = « Pas venu ») qui ne l'ont pas encore reçu.
+	sendMakeup: async ({ fetch }) => {
+		const res = await fetch(
+			`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[type][_eq]=talent_days&filter[venue][_eq]=false&limit=-1&fields=id,email,first_name,gender,rattrapage_envoye`,
+			{ headers: getAuthHeaders() }
+		);
+		if (!res.ok) return fail(500, { error: 'Impossible de lire les inscrits.' });
+		const rows: Record<string, any>[] = (await res.json()).data ?? [];
+		const targets = rows.filter((r) => r.email && r.rattrapage_envoye !== true);
+
+		if (targets.length === 0) {
+			return fail(400, { error: "Aucun absent à contacter (marque d'abord les « Pas venu »)." });
+		}
+
+		try {
+			await sendMakeupEmails(
+				targets.map((r) => ({ to: r.email, firstName: r.first_name, gender: r.gender }))
+			);
+		} catch (err) {
+			console.error('Makeup emails failed:', err);
+			return fail(502, {
+				error: `Emails non envoyés : ${err instanceof Error ? err.message : String(err)}`
+			});
+		}
+
+		await Promise.all(
+			targets.map((r) =>
+				fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${r.id}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+					body: JSON.stringify({ rattrapage_envoye: true })
+				}).catch(() => null)
+			)
+		);
+
+		return { success: true, makeupSent: targets.length };
+	},
+
+	// Présences des joueurs de l'académie : un statut par joueur et par séance (date).
+	updatePresence: async ({ request, fetch }) => {
+		const data = await request.formData();
+		const id = data.get('id');
+		const date = String(data.get('date') ?? '');
+		const status = String(data.get('status') ?? '');
+
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, { error: 'Date invalide.' });
+		if (!['present', 'absent', 'excuse', ''].includes(status)) {
+			return fail(400, { error: 'Statut invalide.' });
+		}
+
+		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=presences`, {
+			headers: getAuthHeaders()
+		});
+		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
+		const presences = { ...((await res.json()).data?.presences ?? {}) };
+
+		if (status) presences[date] = status;
+		else delete presences[date];
+
+		const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+			body: JSON.stringify({ presences })
+		});
+		if (!patch.ok) {
+			const errorBody = await patch.json().catch(() => null);
+			console.error('Presence update failed:', patch.status, JSON.stringify(errorBody));
+			return fail(500, { error: "La présence n'a pas pu être enregistrée." });
 		}
 		return { success: true };
 	},

@@ -29,6 +29,32 @@
 			return value === 'oui' ? 'Oui' : value === 'non' ? 'Non' : String(value);
 		return String(value);
 	}
+	let presenceFilter = $state<'all' | 'venu' | 'pas_venu' | 'inconnu'>('all');
+	let makeupResult = $state('');
+	let makeupSending = $state(false);
+	let tdAll = $derived(data.players.filter((p: any) => p.type === 'talent_days'));
+	let presentCount = $derived(tdAll.filter((p: any) => p.venue === true).length);
+	let absentCount = $derived(tdAll.filter((p: any) => p.venue === false).length);
+	let unknownCount = $derived(tdAll.filter((p: any) => p.venue !== true && p.venue !== false).length);
+	let makeupPending = $derived(
+		tdAll.filter((p: any) => p.venue === false && p.rattrapage_envoye !== true && p.email).length
+	);
+	// --- Présences des joueurs de l'académie (une ligne par séance) ---
+	let presDate = $state(new Date().toISOString().slice(0, 10));
+	let presSessions = $derived(
+		[...new Set(acceptedPlayers.flatMap((p: any) => Object.keys(p.presences ?? {})))].sort()
+	);
+	const presOf = (player: any, date: string): string => player.presences?.[date] ?? '';
+	let presToday = $derived({
+		present: acceptedPlayers.filter((p: any) => presOf(p, presDate) === 'present').length,
+		absent: acceptedPlayers.filter((p: any) => presOf(p, presDate) === 'absent').length,
+		excuse: acceptedPlayers.filter((p: any) => presOf(p, presDate) === 'excuse').length
+	});
+	const presRate = (player: any) => {
+		if (presSessions.length === 0) return null;
+		const n = presSessions.filter((d) => presOf(player, d) === 'present').length;
+		return `${n}/${presSessions.length}`;
+	};
 	let showAdd = $state(false);
 	let addError = $state('');
 
@@ -119,7 +145,7 @@
 
 	let viewMode = $derived(
 		(page.url.searchParams.get('view') as
-			'overview' | 'talent_days' | 'academie' | 'inscrits' | 'stats') ?? 'overview'
+			'overview' | 'talent_days' | 'academie' | 'inscrits' | 'stats' | 'presences') ?? 'overview'
 	);
 
 	function changeView(view: string) {
@@ -247,9 +273,18 @@
 	);
 
 	let filteredPlayers = $derived(
-		genderFilter === 'all'
+		(genderFilter === 'all'
 			? baseFiltered
 			: baseFiltered.filter((p: any) => normGender(p.gender) === genderFilter)
+		).filter((p: any) =>
+			viewMode !== 'talent_days' || presenceFilter === 'all'
+				? true
+				: presenceFilter === 'venu'
+					? p.venue === true
+					: presenceFilter === 'pas_venu'
+						? p.venue === false
+						: p.venue !== true && p.venue !== false
+		)
 	);
 
 	// Dans la liste "Joueurs inscrits" (mixte), on sait s'il faut montrer les colonnes
@@ -796,6 +831,20 @@
 				<p class="text-xs font-medium text-dark-accent">Joueurs inscrits</p>
 				<p class="font-clash text-2xl text-dark">{acceptedPlayers.length}</p>
 			</div>
+				<div class="rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+					<div
+						class="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600"
+					>
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+						</svg>
+					</div>
+					<p class="text-xs font-medium text-dark-accent">Présences Talent Day</p>
+					<p class="font-clash text-2xl text-dark">{presentCount} <span class="text-sm text-dark-accent">venus</span></p>
+					<p class="mt-1 text-xs text-dark-accent">
+						{absentCount} pas venus · {unknownCount} non renseignés
+					</p>
+				</div>
 			<div class="rounded-2xl bg-dark p-5 shadow-sm transition-shadow hover:shadow-md">
 				<div
 					class="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-dark"
@@ -906,6 +955,82 @@
 				</div>
 			</div>
 		</div>
+	{:else if viewMode === 'presences'}
+		<div class="rounded-2xl bg-white p-5 shadow-sm">
+			<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<h1 class="font-clash text-xl text-dark sm:text-2xl">
+					Présences ({acceptedPlayers.length} joueurs)
+				</h1>
+				<div class="flex flex-wrap items-center gap-3">
+					<label class="flex items-center gap-2 text-sm text-dark-accent">
+						Séance du
+						<input
+							type="date"
+							bind:value={presDate}
+							class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2 text-sm text-dark"
+						/>
+					</label>
+					<span class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700"
+						>{presToday.present} présents</span
+					>
+					<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700"
+						>{presToday.absent} absents</span
+					>
+					<span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800"
+						>{presToday.excuse} excusés</span
+					>
+				</div>
+			</div>
+
+			{#if acceptedPlayers.length === 0}
+				<p class="rounded-xl bg-[#f4f5f7] px-4 py-3 text-sm text-dark-accent">
+					Aucun joueur accepté pour le moment.
+				</p>
+			{/if}
+
+			<div class="flex flex-col divide-y divide-dark-accent/10">
+				{#each acceptedPlayers as player (player.id)}
+					<div class="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+						<div>
+							<p class="text-sm font-medium text-dark">{player.first_name} {player.last_name}</p>
+							<p class="text-xs text-dark-accent">
+								{genderLabel(player.gender)}{presRate(player)
+									? ` · ${presRate(player)} séances`
+									: ''}
+							</p>
+						</div>
+						<form method="POST" action="?/updatePresence" use:enhance class="flex gap-1.5">
+							<input type="hidden" name="id" value={player.id} />
+							<input type="hidden" name="date" value={presDate} />
+							<button
+								type="submit"
+								name="status"
+								value={presOf(player, presDate) === 'present' ? '' : 'present'}
+								class="rounded-full px-3 py-1.5 text-xs font-medium {presOf(player, presDate) === 'present'
+									? 'bg-green-600 text-white'
+									: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}">Présent</button
+							>
+							<button
+								type="submit"
+								name="status"
+								value={presOf(player, presDate) === 'absent' ? '' : 'absent'}
+								class="rounded-full px-3 py-1.5 text-xs font-medium {presOf(player, presDate) === 'absent'
+									? 'bg-red-600 text-white'
+									: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}">Absent</button
+							>
+							<button
+								type="submit"
+								name="status"
+								value={presOf(player, presDate) === 'excuse' ? '' : 'excuse'}
+								class="rounded-full px-3 py-1.5 text-xs font-medium {presOf(player, presDate) === 'excuse'
+									? 'bg-yellow-500 text-white'
+									: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}">Excusé</button
+							>
+						</form>
+					</div>
+				{/each}
+			</div>
+		</div>
 	{:else if viewMode === 'stats'}
 		<div class="rounded-2xl bg-white p-5 shadow-sm">
 			<div class="mb-6 flex flex-wrap items-center gap-3">
@@ -920,6 +1045,17 @@
 					<option value="fille">Femmes</option>
 					<option value="garcon">Hommes</option>
 				</select>
+						{#if viewMode === 'talent_days'}
+							<select
+								bind:value={presenceFilter}
+								class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2 text-sm text-dark print:hidden"
+							>
+								<option value="all">Toutes les présences</option>
+								<option value="venu">Venus ({presentCount})</option>
+								<option value="pas_venu">Pas venus ({absentCount})</option>
+								<option value="inconnu">Non renseignés ({unknownCount})</option>
+							</select>
+						{/if}
 				<input
 					type="search"
 					bind:value={statsSearch}
@@ -1072,10 +1208,45 @@
 
 				<div class="flex items-center gap-2 print:hidden">
 					{#if viewMode === 'talent_days'}
-						<button
-							type="button"
-							onclick={() => {
-								addError = '';
+							<form
+								method="POST"
+								action="?/sendMakeup"
+								use:enhance={({ cancel }) => {
+									if (
+										!confirm(
+											`Envoyer l'email « viens te tester ce week-end » à ${makeupPending} joueur(s) « Pas venu » ?`
+										)
+									) {
+										cancel();
+										return;
+									}
+									makeupSending = true;
+									makeupResult = '';
+									return async ({ result, update }) => {
+										makeupSending = false;
+										makeupResult =
+											result.type === 'success'
+												? `✓ Envoyé à ${(result.data as any)?.makeupSent ?? ''} joueur(s)`
+												: String((result as any).data?.error ?? 'Erreur');
+										await update({ reset: false });
+									};
+								}}
+								class="flex items-center gap-2"
+							>
+								<button
+									type="submit"
+									disabled={makeupPending === 0 || makeupSending}
+									title="Envoie l'email de rattrapage aux joueurs marqués « Pas venu »"
+									class="rounded-xl bg-secondary px-4 py-2 text-sm font-medium text-dark transition-opacity hover:opacity-90 disabled:opacity-40"
+								>
+									{makeupSending ? 'Envoi...' : `Email rattrapage (${makeupPending})`}
+								</button>
+								{#if makeupResult}<span class="text-xs text-dark-accent">{makeupResult}</span>{/if}
+							</form>
+							<button
+								type="button"
+								onclick={() => {
+									addError = '';
 								showAdd = true;
 							}}
 							title="Ajouter un joueur au Talent Day"

@@ -175,6 +175,30 @@
 		</a>
 
 		<a
+			href="/admin?view=presences"
+			onclick={() => (mobileNavOpen = false)}
+			class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors {isActive(
+				'presences'
+			)
+				? 'bg-white text-dark'
+				: 'text-white/50 hover:bg-white/10 hover:text-white'}"
+		>
+			<svg
+				width="18"
+				height="18"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				class="shrink-0"
+			>
+				<path d="M9 11l3 3L22 4" />
+				<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+			</svg>
+			<span class="truncate">Présences</span>
+		</a>
+
+		<a
 			href="/admin?view=stats"
 			onclick={() => (mobileNavOpen = false)}
 			class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors {isActive(

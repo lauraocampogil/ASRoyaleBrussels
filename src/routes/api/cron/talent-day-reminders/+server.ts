@@ -42,7 +42,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 	}
 
 	const regRes = await fetch(
-		`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[type][_eq]=talent_days&filter[reminder_sent][_neq]=true`,
+		`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[type][_eq]=talent_days&limit=-1`,
 		{ headers: getAuthHeaders() }
 	);
 
@@ -52,7 +52,11 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		return json({ sent: 0, reason: 'Erreur lecture Registration.' }, { status: 500 });
 	}
 
-	const { data: registrations } = await regRes.json();
+	const { data: allRegistrations } = await regRes.json();
+	// Filtre côté code : en SQL, une valeur vide (NULL) n'est pas « différente de true ».
+	const registrations = (allRegistrations ?? []).filter(
+		(r: Record<string, any>) => r.reminder_sent !== true && r.email
+	);
 
 	const dateLabel = new Intl.DateTimeFormat('fr-BE', {
 		day: 'numeric',

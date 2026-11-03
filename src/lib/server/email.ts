@@ -288,3 +288,65 @@ export async function sendStaffNotificationEmail(opts: {
 		await new Promise((r) => setTimeout(r, 600));
 	}
 }
+
+// ---- Rattrapage : email aux joueurs qui n'ont pas pu venir au Talent Day ----
+// Modifie ces valeurs si les dates ou les horaires changent.
+const MAKEUP = {
+	dates: 'samedi 7 ou dimanche 8 novembre',
+	girls: 'de 17h00 à 18h30',
+	boys: 'de 17h30 à 19h00'
+};
+
+export async function sendMakeupEmails(
+	players: { to: string; firstName: string; gender?: string | null }[]
+): Promise<void> {
+	const emails = players.map((p) => {
+		const g = (p.gender ?? '').trim();
+		const isFemale = /^(f|fille|femme|female|woman|girl)$/i.test(g);
+		const isMale = /^(m|garcon|garçon|homme|male|man|boy)$/i.test(g);
+		const horaire = isFemale
+			? `<strong>${MAKEUP.girls}</strong>`
+			: isMale
+				? `<strong>${MAKEUP.boys}</strong>`
+				: `<strong>${MAKEUP.girls}</strong> pour les filles, <strong>${MAKEUP.boys}</strong> pour les garçons`;
+
+		const content = `
+			<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Salut ${p.firstName},</h2>
+			<p>Nous n'avons pas pu te voir au Talent Day du 1er novembre, mais <strong>tu peux encore venir te tester</strong> : nous t'accueillons ce week-end !</p>
+			<table style="width:100%; border-collapse:collapse; margin:20px 0;">
+				<tr>
+					<td style="padding:4px 0; color:#555; width:90px;">Quand</td>
+					<td style="padding:4px 0; font-weight:600;">${MAKEUP.dates}</td>
+				</tr>
+				<tr>
+					<td style="padding:4px 0; color:#555;">Horaire</td>
+					<td style="padding:4px 0;">${horaire}</td>
+				</tr>
+				<tr>
+					<td style="padding:4px 0; color:#555;">Lieu</td>
+					<td style="padding:4px 0; font-weight:600;">Centre Nelson Mandela<br/>Rue de Ransbeek 227, 1120 Bruxelles</td>
+				</tr>
+			</table>
+			<p style="margin:0 0 8px; font-weight:600;">À apporter :</p>
+			<ul style="margin:0 0 20px; padding-left:20px; color:#333;">
+				<li>Tenue de sport complète + crampons</li>
+				<li>Ta carte d'identité originale</li>
+				<li>Une bouteille d'eau</li>
+			</ul>
+			<p>Pour nous dire quel jour tu viens, ou pour toute question, écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
+			<p style="margin-top:24px;">À très vite sur le terrain,<br/>L'équipe Brussels Summit Academy</p>
+		`;
+		return {
+			from: env.RESEND_FROM as string,
+			to: p.to,
+			subject: "Tu n'as pas pu venir au Talent Day ? Viens te tester ce week-end",
+			html: wrapEmail(content)
+		};
+	});
+
+	// L'API « batch » de Resend envoie jusqu'à 100 emails en une seule requête.
+	for (let i = 0; i < emails.length; i += 100) {
+		const { error } = await getResend().batch.send(emails.slice(i, i + 100));
+		if (error) throw new Error(`${error.name}: ${error.message}`);
+	}
+}
