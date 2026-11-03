@@ -3,7 +3,7 @@ import { PUBLIC_DIRECTUS_URL } from '$env/static/public';
 import { env } from '$env/dynamic/private';
 import { cleanInstagram } from '$lib/instagram';
 import type { Actions, PageServerLoad } from './$types';
-import { sendRegistrationConfirmationEmail } from '$lib/server/email';
+import { sendRegistrationConfirmationEmail, sendStaffNotificationEmail } from '$lib/server/email';
 import { looksLikeIdDocument } from '$lib/server/idVerification';
 import { isPast } from '$lib/server/talentDay';
 import { findAcceptedByEmail, completeRegistration } from '$lib/server/registrations';
@@ -66,6 +66,14 @@ export const actions: Actions = {
 	default: async ({ request, fetch, platform }) => {
 		const data = await request.formData();
 
+		// Tâche en arrière-plan : le joueur n'attend pas l'envoi des emails.
+		const background = async (task: Promise<unknown>) => {
+			const p = platform as any;
+			const waitUntil = p?.ctx?.waitUntil?.bind(p.ctx) ?? p?.context?.waitUntil?.bind(p.context);
+			if (waitUntil) waitUntil(task);
+			else await task;
+		};
+
 		const type = data.get('type')?.toString() ?? '';
 		const isAcademie = type === 'academie';
 
@@ -97,6 +105,20 @@ export const actions: Actions = {
 				});
 			}
 		}
+
+		const notifyStaff = (kind: 'nouvelle' | 'completee') =>
+			background(
+				sendStaffNotificationEmail({
+					kind,
+					type: values.type,
+					firstName: values.first_name,
+					lastName: values.last_name,
+					email: values.email,
+					phone: values.phone,
+					instagram: values.instagram,
+					position: values.preferred_position
+				}).catch((err) => console.error('Staff notification failed:', err))
+			);
 
 		if (isAcademie) {
 			const settingsRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
@@ -175,6 +197,7 @@ export const actions: Actions = {
 				console.error('Registration completion failed:', err);
 				return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
 			}
+			await notifyStaff('completee');
 			return { success: true };
 		}
 
@@ -229,6 +252,7 @@ export const actions: Actions = {
 				console.error('Registration completion failed:', err);
 				return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
 			}
+			await notifyStaff('completee');
 			return { success: true };
 		}
 
@@ -308,10 +332,8 @@ export const actions: Actions = {
 		};
 
 		const task = sendConfirmation().catch((err) => console.error('sendConfirmation failed:', err));
-		const p = platform as any;
-		const waitUntil = p?.ctx?.waitUntil?.bind(p.ctx) ?? p?.context?.waitUntil?.bind(p.context);
-		if (waitUntil) waitUntil(task);
-		else await task;
+		await background(task);
+		await notifyStaff('nouvelle');
 
 		return { success: true };
 	}

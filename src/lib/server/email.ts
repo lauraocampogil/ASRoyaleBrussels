@@ -180,3 +180,71 @@ export async function sendRejectionEmail(opts: { to: string; firstName: string }
 		html: wrapEmail(content)
 	});
 }
+
+function escapeHtml(value: unknown): string {
+	return String(value ?? '')
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+}
+
+// Adresses des membres du staff (même variable que la connexion au dashboard : STAFF_ACCOUNTS).
+export function getStaffEmails(): string[] {
+	const raw = env.STAFF_ACCOUNTS ?? '';
+	return raw
+		.split(',')
+		.map((pair) => pair.split(':')[0]?.trim().toLowerCase())
+		.filter((email): email is string => !!email && email.includes('@'));
+}
+
+// Prévient chaque membre du staff qu'une inscription vient d'arriver.
+export async function sendStaffNotificationEmail(opts: {
+	kind: 'nouvelle' | 'completee';
+	type: string;
+	firstName: string;
+	lastName: string;
+	email: string;
+	phone: string;
+	instagram?: string | null;
+	position?: string | null;
+}) {
+	const recipients = getStaffEmails();
+	if (recipients.length === 0) return;
+
+	const typeLabel = opts.type === 'talent_days' ? 'Talent Day' : "Rejoindre l'académie";
+	const title =
+		opts.kind === 'completee' ? 'Fiche académie complétée' : `Nouvelle inscription · ${typeLabel}`;
+	const row = (label: string, value?: string | null) =>
+		value
+			? `<tr><td style="padding:4px 12px 4px 0; color:#555;">${label}</td><td style="padding:4px 0; font-weight:600;">${escapeHtml(value)}</td></tr>`
+			: '';
+
+	const content = `
+		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">${escapeHtml(title)}</h2>
+		<table style="border-collapse:collapse; font-size:15px;">
+			${row('Nom', `${opts.firstName} ${opts.lastName}`)}
+			${row('Formulaire', typeLabel)}
+			${row('Email', opts.email)}
+			${row('Téléphone', opts.phone)}
+			${row('Instagram', opts.instagram ? `@${opts.instagram}` : '')}
+			${row('Poste', opts.position)}
+		</table>
+		<p style="margin-top:24px;"><a href="${SITE_URL}/admin" style="background:#1807b9; color:#ffffff; padding:10px 18px; border-radius:999px; text-decoration:none; font-weight:600;">Ouvrir le dashboard</a></p>
+	`;
+
+	// Un email par personne, l'un après l'autre (limite de débit de Resend).
+	for (const to of recipients) {
+		try {
+			await send({
+				from: env.RESEND_FROM as string,
+				to,
+				subject: `${title} : ${opts.firstName} ${opts.lastName}`,
+				html: wrapEmail(content)
+			});
+		} catch (err) {
+			console.error(`Staff notification failed for ${to}:`, err);
+		}
+		await new Promise((r) => setTimeout(r, 600));
+	}
+}
