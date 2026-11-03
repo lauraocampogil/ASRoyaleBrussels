@@ -5,12 +5,30 @@
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import type { PageData } from './$types';
 	import { cleanInstagram } from '$lib/instagram';
+	import { DOSSIER_SECTIONS, FEES, MONTH_LABELS } from '$lib/dossier';
 
 	let { data }: { data: PageData } = $props();
 	let editingId = $state<number | null>(null);
 	let genderFilter = $state<'all' | 'fille' | 'garcon'>('all');
 	let resendResult = $state<Record<string, string>>({});
 	let reminderResult = $state<Record<string, string>>({});
+	let payYear = $state(new Date().getFullYear());
+
+	const monthlyFee = (player: any) => {
+		const g = normGender(player.gender);
+		return g ? FEES.monthly[g] : null;
+	};
+	const isPaid = (player: any, key: string) =>
+		key === 'annual' ? player.paiements?.annual === true : player.paiements?.months?.[key] === true;
+	const FOOT: Record<string, string> = { droit: 'Droit', gauche: 'Gauche', les_deux: 'Les deux' };
+	function fmtDossier(key: string, value: unknown) {
+		if (value === true) return 'Oui';
+		if (value === false) return 'Non';
+		if (key === 'pied') return FOOT[String(value)] ?? String(value);
+		if (key === 'disponible' || key === 'info_contrat' || key === 'selection_nationale')
+			return value === 'oui' ? 'Oui' : value === 'non' ? 'Non' : String(value);
+		return String(value);
+	}
 	let showAdd = $state(false);
 	let addError = $state('');
 
@@ -389,6 +407,91 @@
 	<span class="hidden text-sm font-medium print:inline"
 		>{venueOf(player) === true ? 'Venu' : venueOf(player) === false ? 'Pas venu' : ''}</span
 	>
+{/snippet}
+
+{#snippet extraPanel(player: any)}
+	{#if viewMode !== 'talent_days' && (player.status === 'accepted' || player.dossier)}
+		<div class="mt-3 flex flex-col gap-3 print:hidden">
+			{#if player.status === 'accepted'}
+				<div class="rounded-xl border border-dark-accent/10 bg-white p-3">
+					<div class="mb-2 flex flex-wrap items-center gap-2">
+						<span class="text-sm font-semibold text-dark">Paiements</span>
+						<form method="POST" action="?/updatePayment" use:enhance class="inline">
+							<input type="hidden" name="id" value={player.id} />
+							<input type="hidden" name="kind" value="annual" />
+							<input type="hidden" name="key" value="annual" />
+							<input type="hidden" name="paid" value={isPaid(player, 'annual') ? 'false' : 'true'} />
+							<button
+								type="submit"
+								class="rounded-full px-3 py-1 text-xs font-medium {isPaid(player, 'annual')
+									? 'bg-green-600 text-white'
+									: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}"
+							>
+								Annuel {FEES.annual} € · {isPaid(player, 'annual') ? 'Payé ✓' : 'À payer'}
+							</button>
+						</form>
+						<select
+							bind:value={payYear}
+							class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-2 py-1 text-xs text-dark"
+						>
+							{#each [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1] as y (y)}
+								<option value={y}>{y}</option>
+							{/each}
+						</select>
+						<span class="text-xs text-dark-accent">
+							Mensualité : {monthlyFee(player) ? `${monthlyFee(player)} €` : 'genre non renseigné'}
+						</span>
+					</div>
+					<div class="flex flex-wrap gap-1.5">
+						{#each MONTH_LABELS as label, i (label)}
+							{@const key = `${payYear}-${String(i + 1).padStart(2, '0')}`}
+							<form method="POST" action="?/updatePayment" use:enhance class="inline">
+								<input type="hidden" name="id" value={player.id} />
+								<input type="hidden" name="kind" value="month" />
+								<input type="hidden" name="key" value={key} />
+								<input type="hidden" name="paid" value={isPaid(player, key) ? 'false' : 'true'} />
+								<button
+									type="submit"
+									title={isPaid(player, key) ? 'Payé : cliquer pour annuler' : 'Marquer comme payé'}
+									class="rounded-full px-2.5 py-1 text-xs font-medium {isPaid(player, key)
+										? 'bg-green-600 text-white'
+										: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}"
+								>
+									{label.slice(0, 3)}{isPaid(player, key) ? ' ✓' : ''}
+								</button>
+							</form>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			{#if player.dossier}
+				<details class="rounded-xl border border-dark-accent/10 bg-white p-3">
+					<summary class="cursor-pointer text-sm font-semibold text-dark">Dossier de candidature</summary>
+					<div class="mt-3 flex flex-col gap-4">
+						{#each DOSSIER_SECTIONS as section (section.title)}
+							{@const rows = section.fields.filter(
+								([k]) => player.dossier[k] !== null && player.dossier[k] !== undefined && player.dossier[k] !== ''
+							)}
+							{#if rows.length}
+								<div>
+									<p class="mb-1 text-xs font-semibold uppercase text-dark-accent">{section.title}</p>
+									<dl class="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+										{#each rows as [k, label] (k)}
+											<div>
+												<dt class="text-xs text-dark-accent">{label}</dt>
+												<dd class="whitespace-pre-line text-dark">{fmtDossier(k, player.dossier[k])}</dd>
+											</div>
+										{/each}
+									</dl>
+								</div>
+							{/if}
+						{/each}
+					</div>
+				</details>
+			{/if}
+		</div>
+	{/if}
 {/snippet}
 
 {#snippet idCardButtons(player: any)}
@@ -1085,6 +1188,8 @@
 							</button>
 						</div>
 
+						{@render extraPanel(player)}
+
 						{#if editingId === player.id}
 							{@render editForm(player)}
 						{/if}
@@ -1279,6 +1384,11 @@
 									</button>
 								</td>
 							</tr>
+							{#if viewMode !== 'talent_days' && (player.status === 'accepted' || player.dossier)}
+								<tr class="print:hidden">
+									<td colspan="15" class="px-5 pb-4">{@render extraPanel(player)}</td>
+								</tr>
+							{/if}
 							{#if editingId === player.id}
 								<tr class="border-t border-dark-accent/10 print:hidden">
 									<td colspan="15"class="px-5 pb-4">{@render editForm(player)}</td>

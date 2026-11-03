@@ -109,21 +109,61 @@ export async function sendRegistrationConfirmationEmail(opts: {
 	});
 }
 
-export async function sendAcceptanceEmail(opts: { to: string; firstName: string }) {
+export async function sendAcceptanceEmail(opts: {
+	to: string;
+	firstName: string;
+	gender?: string | null;
+}) {
+	const link = `${SITE_URL}/inscription?type=academie&acces=accepte`;
+	const isFemale = /^(f|fille|femme|female|woman|girl)$/i.test((opts.gender ?? '').trim());
+	const isMale = /^(m|garcon|garçon|homme|male|man|boy)$/i.test((opts.gender ?? '').trim());
+	const monthly = isFemale ? '50' : isMale ? '80' : null;
+
+	const feeRows = `
+		<tr>
+			<td style="padding:6px 0; color:#555;">Cotisation annuelle</td>
+			<td style="padding:6px 0; font-weight:600; text-align:right;">150 € <span style="font-weight:400; color:#555;">(une fois par an)</span></td>
+		</tr>
+		${
+			monthly
+				? `<tr>
+			<td style="padding:6px 0; color:#555;">Cotisation mensuelle</td>
+			<td style="padding:6px 0; font-weight:600; text-align:right;">${monthly} € <span style="font-weight:400; color:#555;">(par mois)</span></td>
+		</tr>`
+				: `<tr>
+			<td style="padding:6px 0; color:#555;">Cotisation mensuelle</td>
+			<td style="padding:6px 0; font-weight:600; text-align:right;">80 € (garçons) · 50 € (filles)</td>
+		</tr>`
+		}`;
+
 	const content = `
-		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Bravo ${opts.firstName} !</h2>
-		<p>Nous avons le plaisir de t'informer que ta candidature a été acceptée. Bienvenue dans l'académie Brussels Summit !</p>
-		<p>Nous reviendrons vers toi très prochainement avec les prochaines étapes pour démarrer ton parcours avec nous.</p>
-		<p>Pour l'instant, tu peux déjà compléter ta fiche via le lien
-			<a href="https://brussels-summitacademy.be/inscription?type=academie&acces=accepte" style="color:#1807b9; font-weight:600;">« Rejoindre l'académie »</a>,
-			afin que nous puissions procéder à ton inscription définitive à l'académie.
+		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Félicitations ${opts.firstName} !</h2>
+		<p>Nous avons le plaisir de t'annoncer que ta candidature a été <strong>acceptée</strong>. Bienvenue chez Brussels Summit Academy !</p>
+
+		<p style="margin:24px 0 8px; font-weight:600;">Pour finaliser ton inscription :</p>
+		<ol style="margin:0 0 20px; padding-left:20px; color:#333;">
+			<li style="margin-bottom:6px;">Remplis ton dossier de candidature en ligne (10 minutes environ). Il nous permet de te connaître, de préparer ton contrat d'adhésion et de contacter ta famille si besoin.</li>
+			<li style="margin-bottom:6px;">Si tu es mineur·e, l'accord d'un parent ou responsable légal est nécessaire.</li>
+			<li>Nous reviendrons ensuite vers toi pour ton contrat d'adhésion et les modalités de paiement.</li>
+		</ol>
+
+		<p style="margin:24px 0;">
+			<a href="${link}" style="display:inline-block; background:#1807b9; color:#ffffff; padding:12px 24px; border-radius:999px; text-decoration:none; font-weight:600;">Compléter mon dossier</a>
 		</p>
-		<p style="margin-top:24px;">À très vite,<br/>L'équipe Brussels Summit Academy</p>
+
+		<p style="margin:24px 0 8px; font-weight:600;">Cotisations :</p>
+		<table style="width:100%; border-collapse:collapse; margin-bottom:8px; font-size:15px; border-top:1px solid #e5e5ef; border-bottom:1px solid #e5e5ef;">
+			${feeRows}
+		</table>
+		<p style="font-size:13px; color:#555;">Les modalités de paiement te seront communiquées avec ton contrat d'adhésion.</p>
+
+		<p>Une question ? Écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
+		<p style="margin-top:24px;">À très vite sur le terrain,<br/>L'équipe Brussels Summit Academy</p>
 	`;
 	await send({
 		from: env.RESEND_FROM as string,
 		to: opts.to,
-		subject: "Félicitations, tu es accepté(e) dans l'académie !",
+		subject: "Bienvenue chez Brussels Summit Academy : ta candidature est acceptée !",
 		html: wrapEmail(content)
 	});
 }

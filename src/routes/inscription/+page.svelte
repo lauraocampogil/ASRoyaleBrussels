@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import { Button } from '$lib/components';
+	import { Button, AcademyApplicationForm } from '$lib/components';
 	import type { ActionData, PageData } from './$types';
 	import { Seo } from '$lib/components';
+	import { toLightJpeg, MIN_DIMENSION } from '$lib/imageUpload';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -36,48 +37,7 @@
 	let idFrontError = $state('');
 	let idBackError = $state('');
 
-	const MIN_DIMENSION = 600;
-	const MAX_SIDE = 1800;
 	let converting = $state(false);
-
-	// Convertit toute photo (dont HEIC d'iPhone) en JPEG léger : lisible par le serveur
-	// et beaucoup plus rapide à envoyer.
-	async function toLightJpeg(file: File): Promise<File> {
-		if (!file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) return file;
-
-		let blob: Blob = file;
-		const isHeic = /heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
-		if (isHeic) {
-			try {
-				// heic-to lit les HEIC récents des iPhone (l'ancienne lib heic2any échouait dessus)
-				const { heicTo } = await import('heic-to');
-				blob = await heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 });
-			} catch (err) {
-				console.warn('Conversion HEIC impossible :', err);
-				// Safari sait lire le HEIC nativement : on tente quand même avec le fichier d'origine.
-			}
-		}
-
-		try {
-			const bitmap = await createImageBitmap(blob);
-			const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-			const canvas = document.createElement('canvas');
-			canvas.width = Math.round(bitmap.width * scale);
-			canvas.height = Math.round(bitmap.height * scale);
-			canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-			const jpeg = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
-			if (jpeg) {
-				return new File([jpeg], file.name.replace(/\.[^.]+$/, '') + '.jpg', {
-					type: 'image/jpeg'
-				});
-			}
-		} catch {
-			// conversion impossible : on garde le fichier tel quel
-		}
-		return blob === file
-			? file
-			: new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
-	}
 
 	async function handleIdCardChange(e: Event, side: 'front' | 'back') {
 		const input = e.currentTarget as HTMLInputElement;
@@ -208,7 +168,7 @@
 			</p>
 		{/if}
 
-		{#if !data.talentDayActive && !acceptedLink && !form?.success}
+		{#if !data.talentDayActive && !acceptedLink && !form?.success && page.url.searchParams.get('type') === 'talent_days'}
 			<div class="mb-8 rounded border border-primary bg-primary/5 p-6 text-center">
 				<p class="font-clash text-title-md text-primary">Cette édition du Talent Day est terminée</p>
 				<p class="mt-2 text-dark/70">
@@ -228,13 +188,21 @@
 
 		{#if form?.success}
 			<div class="rounded border border-primary bg-primary/5 p-6 text-center">
-				<p class="font-clash text-title-md text-primary">Demande envoyée !</p>
-				<p class="mt-2 text-dark/70">On te recontacte très vite.</p>
+				<p class="font-clash text-title-md text-primary">
+					{activeTab === 'academie' ? 'Candidature envoyée !' : 'Demande envoyée !'}
+				</p>
+				<p class="mt-2 text-dark/70">
+					{activeTab === 'academie'
+						? "Après étude du dossier, l'Academy contactera les profils retenus pour la suite du processus."
+						: 'On te recontacte très vite.'}
+				</p>
 			</div>
 		{:else if !data.talentDayActive && !data.academyActive && !acceptedLink}
 			<p class="rounded border border-dark/20 p-6 text-center text-dark/70">
 				Les inscriptions sont fermées pour le moment. Reviens bientôt !
 			</p>
+			{:else if activeTab === 'academie'}
+				<AcademyApplicationForm {form} idOptional={acceptedLink} />
 		{:else}
 			<form
 				method="POST"
@@ -347,77 +315,6 @@
 						<span class="text-xs text-dark-accent">Inscriptions ouvertes de 16 à 28 ans</span>
 					</label>
 
-					{#if activeTab === 'academie'}
-						<label class="flex flex-col gap-2">
-							<span class="text-dark/70">Lieu de naissance</span>
-							<input
-								name="birth_place"
-								required
-								value={form?.values?.birth_place ?? ''}
-								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-							/>
-						</label>
-						<label class="flex flex-col gap-2">
-							<span class="text-dark/70">Nationalité</span>
-							<input
-								name="nationality"
-								required
-								value={form?.values?.nationality ?? ''}
-								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-							/>
-						</label>
-
-						<label class="flex flex-col gap-2 sm:col-span-2">
-							<span class="text-dark/70">Adresse postale</span>
-							<input
-								name="address"
-								required
-								value={form?.values?.address ?? ''}
-								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-							/>
-						</label>
-						<label class="flex flex-col gap-2">
-							<span class="text-dark/70">Code postal</span>
-							<input
-								name="postal_code"
-								required
-								value={form?.values?.postal_code ?? ''}
-								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-							/>
-						</label>
-
-						<div class="mb-4">
-							<label class="mb-1 block text-dark/70" for="current_club">Club actuel</label>
-							<input
-								id="current_club"
-								name="current_club"
-								type="text"
-								class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
-							/>
-						</div>
-
-						<div class="mb-4">
-							<label class="mb-1 block text-dark/70" for="division">Division</label>
-							<select
-								id="division"
-								name="division"
-								class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
-							>
-								<option value="">Sélectionne ta division</option>
-								<option value="nationale_1">Nationale 1</option>
-								<option value="nationale_2">Nationale 2</option>
-								<option value="nationale_3">Nationale 3</option>
-								<option value="provinciale_1">Provinciale 1</option>
-								<option value="provinciale_2">Provinciale 2</option>
-								<option value="provinciale_3">Provinciale 3</option>
-								<option value="provinciale_4">Provinciale 4</option>
-								<option value="regionale">Régionale</option>
-								<option value="u23">U23</option>
-								<option value="u18_elite">U18 Elite</option>
-								<option value="autre">Autre</option>
-							</select>
-						</div>
-					{/if}
 					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Poste préféré</span>
 						<select

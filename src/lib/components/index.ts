@@ -3,3 +3,4 @@ export { default as Tagline } from './tagline.svelte';
 export { default as DotGrid } from './dot-grid.svelte';
 export { default as TalentDayPopup } from './TalentDayPopup.svelte';
 export { default as Seo } from './Seo.svelte';
+export { default as AcademyApplicationForm } from './AcademyApplicationForm.svelte';

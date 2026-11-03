@@ -50,14 +50,8 @@ function requiredFieldsFor(type: string) {
 		{ key: 'id_card_back', label: "Carte d'identité (verso)" }
 	];
 
-	if (type === 'academie') {
-		base.push(
-			{ key: 'birth_place', label: 'Lieu de naissance' },
-			{ key: 'nationality', label: 'Nationalité' },
-			{ key: 'address', label: 'Adresse postale' },
-			{ key: 'postal_code', label: 'Code postal' }
-		);
-	}
+	// « Rejoindre l'académie » : le dossier de candidature est requis.
+	if (type === 'academie') base.push({ key: 'dossier', label: 'Dossier de candidature' });
 
 	return base;
 }
@@ -168,7 +162,11 @@ export const actions: Actions = {
 		let emailFailed = false;
 		try {
 			if (status === 'accepted' && prevStatus !== 'accepted') {
-				await sendAcceptanceEmail({ to: player.email, firstName: player.first_name });
+				await sendAcceptanceEmail({
+					to: player.email,
+					firstName: player.first_name,
+					gender: player.gender
+				});
 			} else if (status === 'rejected' && prevStatus !== 'rejected') {
 				await sendRejectionEmail({ to: player.email, firstName: player.first_name });
 			} else if (wantsCorrection && prevStatus === 'accepted') {
@@ -345,6 +343,42 @@ export const actions: Actions = {
 			console.error('Manual add failed:', res.status, JSON.stringify(errorBody));
 			const msg = errorBody?.errors?.[0]?.message;
 			return fail(500, { addError: `Ajout impossible${msg ? ` : ${msg}` : '.'}` });
+		}
+		return { success: true };
+	},
+
+	// Suivi des paiements : cotisation annuelle et mensualités (une case = un paiement).
+	updatePayment: async ({ request, fetch }) => {
+		const data = await request.formData();
+		const id = data.get('id');
+		const kind = String(data.get('kind') ?? '');
+		const key = String(data.get('key') ?? '');
+		const paid = String(data.get('paid') ?? '') === 'true';
+
+		if (kind !== 'annual' && !/^\d{4}-\d{2}$/.test(key)) {
+			return fail(400, { error: 'Paiement invalide.' });
+		}
+
+		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=paiements`, {
+			headers: getAuthHeaders()
+		});
+		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
+		const current = (await res.json()).data?.paiements ?? {};
+		const paiements = { annual: current.annual === true, months: { ...(current.months ?? {}) } };
+
+		if (kind === 'annual') paiements.annual = paid;
+		else if (paid) paiements.months[key] = true;
+		else delete paiements.months[key];
+
+		const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+			body: JSON.stringify({ paiements })
+		});
+		if (!patch.ok) {
+			const errorBody = await patch.json().catch(() => null);
+			console.error('Payment update failed:', patch.status, JSON.stringify(errorBody));
+			return fail(500, { error: "Le paiement n'a pas pu être enregistré." });
 		}
 		return { success: true };
 	},

@@ -6,6 +6,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { sendRegistrationConfirmationEmail, sendStaffNotificationEmail } from '$lib/server/email';
 import { looksLikeIdDocument } from '$lib/server/idVerification';
 import { isPast } from '$lib/server/talentDay';
+import { parseDossier, type Dossier } from '$lib/server/dossier';
 import { findAcceptedByEmail, completeRegistration } from '$lib/server/registrations';
 
 export const load: PageServerLoad = async ({ fetch }) => {
@@ -163,14 +164,6 @@ export const actions: Actions = {
 			});
 		}
 
-		// Champs obligatoires uniquement pour "Rejoindre l'académie"
-		if (
-			isAcademie &&
-			(!values.birth_place || !values.nationality || !values.address || !values.postal_code)
-		) {
-			return fail(400, { error: 'Merci de remplir tous les champs obligatoires.', values });
-		}
-
 		const birthDate = new Date(values.birth_date);
 		const today = new Date();
 		let age = today.getFullYear() - birthDate.getFullYear();
@@ -186,65 +179,64 @@ export const actions: Actions = {
 			});
 		}
 
-		// Joueur déjà accepté (Talent Day) qui complète sa fiche : on met à jour sa ligne existante
+		// Joueur déjà accepté (Talent Day) : on complète sa fiche existante avec le dossier
 		const existing = isAcademie ? await findAcceptedByEmail(values.email) : null;
-		const alreadyHasIds = !!(existing?.id_card_front && existing?.id_card_back);
 
-		if (existing && alreadyHasIds) {
-			try {
-				await completeRegistration(existing, values);
-			} catch (err) {
-				console.error('Registration completion failed:', err);
-				return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
+		let dossier: Dossier | null = null;
+		if (isAcademie) {
+			const parsed = parseDossier(data, age < 18);
+			if (parsed.error) return fail(400, { error: parsed.error, values });
+			dossier = parsed.dossier;
+		}
+
+		// Carte d'identité : demandée sauf si le joueur accepté l'a déjà fournie au Talent Day
+		let idCardFrontId: string | null = null;
+		let idCardBackId: string | null = null;
+
+		const needsIds = !(existing?.id_card_front && existing?.id_card_back);
+		if (needsIds) {
+			const idFront = data.get('id_card_front');
+			const idBack = data.get('id_card_back');
+			if (
+				!(idFront instanceof File) ||
+				idFront.size === 0 ||
+				!(idBack instanceof File) ||
+				idBack.size === 0
+			) {
+				return fail(400, {
+					error: "Le recto et le verso de ta carte d'identité sont obligatoires.",
+					values
+				});
 			}
-			await notifyStaff('completee');
-			return { success: true };
-		}
 
-		const idFront = data.get('id_card_front');
-		const idBack = data.get('id_card_back');
-		if (
-			!(idFront instanceof File) ||
-			idFront.size === 0 ||
-			!(idBack instanceof File) ||
-			idBack.size === 0
-		) {
-			return fail(400, {
-				error: "Le recto et le verso de ta carte d'identité sont obligatoires.",
-				values
-			});
-		}
-
-		const [frontCheck, backCheck] = await Promise.all([
-			looksLikeIdDocument(idFront),
-			looksLikeIdDocument(idBack)
-		]);
-
-		if (!frontCheck.valid) {
-			return fail(400, { error: `Recto : ${frontCheck.reason}`, values });
-		}
-		if (!backCheck.valid) {
-			return fail(400, { error: `Verso : ${backCheck.reason}`, values });
-		}
-
-		let idCardFrontId: string;
-		let idCardBackId: string;
-
-		try {
-			// Les deux envois en parallèle (au lieu de l'un après l'autre)
-			[idCardFrontId, idCardBackId] = await Promise.all([
-				uploadFile(idFront, fetch),
-				uploadFile(idBack, fetch)
+			const [frontCheck, backCheck] = await Promise.all([
+				looksLikeIdDocument(idFront),
+				looksLikeIdDocument(idBack)
 			]);
-		} catch {
-			return fail(500, { error: "L'envoi de la carte d'identité a échoué, réessaie.", values });
+
+			if (!frontCheck.valid) {
+				return fail(400, { error: `Recto : ${frontCheck.reason}`, values });
+			}
+			if (!backCheck.valid) {
+				return fail(400, { error: `Verso : ${backCheck.reason}`, values });
+			}
+
+			try {
+				// Les deux envois en parallèle (au lieu de l'un après l'autre)
+				[idCardFrontId, idCardBackId] = await Promise.all([
+					uploadFile(idFront, fetch),
+					uploadFile(idBack, fetch)
+				]);
+			} catch {
+				return fail(500, { error: "L'envoi de la carte d'identité a échoué, réessaie.", values });
+			}
 		}
 
-		// Joueur accepté mais sans carte d'identité enregistrée : on complète sa fiche avec les cartes
 		if (existing) {
 			try {
 				await completeRegistration(existing, {
 					...values,
+					...(dossier ? { dossier } : {}),
 					id_card_front: idCardFrontId,
 					id_card_back: idCardBackId
 				});
@@ -261,6 +253,7 @@ export const actions: Actions = {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				...values,
+				...(dossier ? { dossier } : {}),
 				id_card_front: idCardFrontId,
 				id_card_back: idCardBackId
 			})
