@@ -182,8 +182,29 @@ export const actions: Actions = {
 		// Joueur déjà accepté (Talent Day) : on complète sa fiche existante avec le dossier
 		const existing = isAcademie ? await findAcceptedByEmail(values.email) : null;
 
+		// Deux formulaires pour « Rejoindre l'académie » :
+		// - le formulaire de base (tout le monde) ;
+		// - le grand formulaire (dossier), réservé aux joueurs acceptés.
+		const isDossier = isAcademie && data.get('dossier_form') === '1';
+
+		if (isDossier && !existing) {
+			return fail(403, {
+				error:
+					"Ce formulaire est réservé aux joueurs acceptés. Utilise l'email avec lequel tu t'es inscrit(e).",
+				values
+			});
+		}
+
+		if (
+			isAcademie &&
+			!isDossier &&
+			(!values.birth_place || !values.nationality || !values.address || !values.postal_code)
+		) {
+			return fail(400, { error: 'Merci de remplir tous les champs obligatoires.', values });
+		}
+
 		let dossier: Dossier | null = null;
-		if (isAcademie) {
+		if (isDossier) {
 			const parsed = parseDossier(data, age < 18);
 			if (parsed.error) return fail(400, { error: parsed.error, values });
 			dossier = parsed.dossier;

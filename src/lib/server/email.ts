@@ -254,7 +254,7 @@ export async function sendStaffNotificationEmail(opts: {
 
 	const typeLabel = opts.type === 'talent_days' ? 'Talent Day' : "Rejoindre l'académie";
 	const title =
-		opts.kind === 'completee' ? 'Fiche académie complétée' : `Nouvelle inscription · ${typeLabel}`;
+		opts.kind === 'completee' ? 'Dossier complété par un joueur accepté' : `Nouvelle inscription · ${typeLabel}`;
 	const row = (label: string, value?: string | null) =>
 		value
 			? `<tr><td style="padding:4px 12px 4px 0; color:#555;">${label}</td><td style="padding:4px 0; font-weight:600;">${escapeHtml(value)}</td></tr>`

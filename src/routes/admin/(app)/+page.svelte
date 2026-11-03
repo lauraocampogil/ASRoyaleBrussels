@@ -12,14 +12,30 @@
 	let genderFilter = $state<'all' | 'fille' | 'garcon'>('all');
 	let resendResult = $state<Record<string, string>>({});
 	let reminderResult = $state<Record<string, string>>({});
-	let payYear = $state(new Date().getFullYear());
 
 	const monthlyFee = (player: any) => {
 		const g = normGender(player.gender);
 		return g ? FEES.monthly[g] : null;
 	};
-	const isPaid = (player: any, key: string) =>
-		key === 'annual' ? player.paiements?.annual === true : player.paiements?.months?.[key] === true;
+	// --- Paiements : une ligne par paiement (date, type, montant) ---
+	const payList = (player: any): any[] =>
+		(Array.isArray(player.paiements) ? [...player.paiements] : []).sort((x, y) =>
+			String(y.date).localeCompare(String(x.date))
+		);
+	const currentMonth = new Date().toISOString().slice(0, 7);
+	const annualEntry = (player: any) => payList(player).find((e) => e.type === 'annuel');
+	const monthEntry = (player: any, key: string) =>
+		payList(player).find((e) => e.type === 'mensuel' && e.mois === key);
+	const payTotal = (player: any) =>
+		payList(player).reduce((sum, e) => sum + (Number(e.montant) || 0), 0);
+	const monthLabel = (key: string | null) => {
+		if (!key) return '';
+		const [y, m] = key.split('-');
+		return `${MONTH_LABELS[Number(m) - 1] ?? m} ${y}`;
+	};
+	let totalCollected = $derived(
+		acceptedPlayers.reduce((sum: number, p: any) => sum + payTotal(p), 0)
+	);
 	const FOOT: Record<string, string> = { droit: 'Droit', gauche: 'Gauche', les_deux: 'Les deux' };
 	function fmtDossier(key: string, value: unknown) {
 		if (value === true) return 'Oui';
@@ -39,22 +55,15 @@
 	let makeupPending = $derived(
 		tdAll.filter((p: any) => p.venue === false && p.rattrapage_envoye !== true && p.email).length
 	);
-	// --- Présences des joueurs de l'académie (une ligne par séance) ---
-	let presDate = $state(new Date().toISOString().slice(0, 10));
-	let presSessions = $derived(
-		[...new Set(acceptedPlayers.flatMap((p: any) => Object.keys(p.presences ?? {})))].sort()
-	);
-	const presOf = (player: any, date: string): string => player.presences?.[date] ?? '';
-	let presToday = $derived({
-		present: acceptedPlayers.filter((p: any) => presOf(p, presDate) === 'present').length,
-		absent: acceptedPlayers.filter((p: any) => presOf(p, presDate) === 'absent').length,
-		excuse: acceptedPlayers.filter((p: any) => presOf(p, presDate) === 'excuse').length
-	});
-	const presRate = (player: any) => {
-		if (presSessions.length === 0) return null;
-		const n = presSessions.filter((d) => presOf(player, d) === 'present').length;
-		return `${n}/${presSessions.length}`;
-	};
+	// --- Présences des joueurs de l'académie : une boîte par joueur, une ligne par date ---
+	const todayIso = new Date().toISOString().slice(0, 10);
+	const presEntries = (player: any): [string, string][] =>
+		Object.entries(player.presences ?? {}).sort((x, y) => y[0].localeCompare(x[0])) as [
+			string,
+			string
+		][];
+	const presCount = (player: any, status: string) =>
+		presEntries(player).filter(([, st]) => st === status).length;
 	let showAdd = $state(false);
 	let addError = $state('');
 
@@ -145,7 +154,7 @@
 
 	let viewMode = $derived(
 		(page.url.searchParams.get('view') as
-			'overview' | 'talent_days' | 'academie' | 'inscrits' | 'stats' | 'presences') ?? 'overview'
+			'overview' | 'talent_days' | 'academie' | 'inscrits' | 'stats' | 'presences' | 'paiements') ?? 'overview'
 	);
 
 	function changeView(view: string) {
@@ -445,61 +454,8 @@
 {/snippet}
 
 {#snippet extraPanel(player: any)}
-	{#if viewMode !== 'talent_days' && (player.status === 'accepted' || player.dossier)}
+	{#if viewMode !== 'talent_days' && player.dossier}
 		<div class="mt-3 flex flex-col gap-3 print:hidden">
-			{#if player.status === 'accepted'}
-				<div class="rounded-xl border border-dark-accent/10 bg-white p-3">
-					<div class="mb-2 flex flex-wrap items-center gap-2">
-						<span class="text-sm font-semibold text-dark">Paiements</span>
-						<form method="POST" action="?/updatePayment" use:enhance class="inline">
-							<input type="hidden" name="id" value={player.id} />
-							<input type="hidden" name="kind" value="annual" />
-							<input type="hidden" name="key" value="annual" />
-							<input type="hidden" name="paid" value={isPaid(player, 'annual') ? 'false' : 'true'} />
-							<button
-								type="submit"
-								class="rounded-full px-3 py-1 text-xs font-medium {isPaid(player, 'annual')
-									? 'bg-green-600 text-white'
-									: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}"
-							>
-								Annuel {FEES.annual} € · {isPaid(player, 'annual') ? 'Payé ✓' : 'À payer'}
-							</button>
-						</form>
-						<select
-							bind:value={payYear}
-							class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-2 py-1 text-xs text-dark"
-						>
-							{#each [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1] as y (y)}
-								<option value={y}>{y}</option>
-							{/each}
-						</select>
-						<span class="text-xs text-dark-accent">
-							Mensualité : {monthlyFee(player) ? `${monthlyFee(player)} €` : 'genre non renseigné'}
-						</span>
-					</div>
-					<div class="flex flex-wrap gap-1.5">
-						{#each MONTH_LABELS as label, i (label)}
-							{@const key = `${payYear}-${String(i + 1).padStart(2, '0')}`}
-							<form method="POST" action="?/updatePayment" use:enhance class="inline">
-								<input type="hidden" name="id" value={player.id} />
-								<input type="hidden" name="kind" value="month" />
-								<input type="hidden" name="key" value={key} />
-								<input type="hidden" name="paid" value={isPaid(player, key) ? 'false' : 'true'} />
-								<button
-									type="submit"
-									title={isPaid(player, key) ? 'Payé : cliquer pour annuler' : 'Marquer comme payé'}
-									class="rounded-full px-2.5 py-1 text-xs font-medium {isPaid(player, key)
-										? 'bg-green-600 text-white'
-										: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}"
-								>
-									{label.slice(0, 3)}{isPaid(player, key) ? ' ✓' : ''}
-								</button>
-							</form>
-						{/each}
-					</div>
-				</div>
-			{/if}
-
 			{#if player.dossier}
 				<details class="rounded-xl border border-dark-accent/10 bg-white p-3">
 					<summary class="cursor-pointer text-sm font-semibold text-dark">Dossier de candidature</summary>
@@ -957,29 +913,121 @@
 		</div>
 	{:else if viewMode === 'presences'}
 		<div class="rounded-2xl bg-white p-5 shadow-sm">
-			<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<h1 class="font-clash text-xl text-dark sm:text-2xl">
-					Présences ({acceptedPlayers.length} joueurs)
-				</h1>
-				<div class="flex flex-wrap items-center gap-3">
-					<label class="flex items-center gap-2 text-sm text-dark-accent">
-						Séance du
-						<input
-							type="date"
-							bind:value={presDate}
-							class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2 text-sm text-dark"
-						/>
-					</label>
-					<span class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700"
-						>{presToday.present} présents</span
-					>
-					<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700"
-						>{presToday.absent} absents</span
-					>
-					<span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800"
-						>{presToday.excuse} excusés</span
-					>
+			<h1 class="font-clash mb-1 text-xl text-dark sm:text-2xl">
+				Présences ({acceptedPlayers.length} joueurs)
+			</h1>
+			<p class="mb-6 text-sm text-dark-accent">
+				Pour chaque joueur, ajoute la date et sa présence. Chaque ajout reste dans sa boîte.
+			</p>
+
+			{#if acceptedPlayers.length === 0}
+				<p class="rounded-xl bg-[#f4f5f7] px-4 py-3 text-sm text-dark-accent">
+					Aucun joueur accepté pour le moment.
+				</p>
+			{/if}
+
+			<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+				{#each acceptedPlayers as player (player.id)}
+					<div class="rounded-xl border border-dark-accent/10 p-4">
+						<div class="mb-3 flex items-start justify-between gap-2">
+							<div>
+								<p class="text-sm font-semibold text-dark">
+									{player.first_name}
+									{player.last_name}
+								</p>
+								<p class="text-xs text-dark-accent">{genderLabel(player.gender)}</p>
+							</div>
+							<div class="flex gap-1.5">
+								<span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
+									>{presCount(player, 'present')} présent(s)</span
+								>
+								<span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700"
+									>{presCount(player, 'absent')} absent(s)</span
+								>
+							</div>
+						</div>
+
+						<form
+							method="POST"
+							action="?/updatePresence"
+							use:enhance
+							class="mb-3 flex flex-wrap items-center gap-2"
+						>
+							<input type="hidden" name="id" value={player.id} />
+							<input
+								type="date"
+								name="date"
+								required
+								value={todayIso}
+								class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-1.5 text-sm text-dark"
+							/>
+							<select
+								name="status"
+								class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-1.5 text-sm text-dark"
+							>
+								<option value="present">Présent</option>
+								<option value="absent">Absent</option>
+							</select>
+							<button
+								type="submit"
+								class="rounded-xl bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+							>
+								Ajouter
+							</button>
+						</form>
+
+						{#if presEntries(player).length === 0}
+							<p class="text-xs text-dark-accent">Aucune présence enregistrée.</p>
+						{:else}
+							<ul class="flex flex-col gap-1.5">
+								{#each presEntries(player) as [date, st] (date)}
+									<li class="flex items-center justify-between rounded-lg bg-[#f4f5f7] px-3 py-1.5">
+										<span class="text-sm text-dark">{formatDate(date)}</span>
+										<span class="flex items-center gap-2">
+											<span
+												class="rounded-full px-2 py-0.5 text-xs font-medium {st === 'present'
+													? 'bg-green-600 text-white'
+													: st === 'absent'
+														? 'bg-red-600 text-white'
+														: 'bg-yellow-500 text-white'}"
+												>{st === 'present' ? 'Présent' : st === 'absent' ? 'Absent' : 'Excusé'}</span
+											>
+											<form method="POST" action="?/updatePresence" use:enhance class="inline">
+												<input type="hidden" name="id" value={player.id} />
+												<input type="hidden" name="date" value={date} />
+												<button
+													type="submit"
+													name="status"
+													value=""
+													title="Supprimer cette ligne"
+													aria-label="Supprimer cette ligne"
+													class="text-lg leading-none text-dark-accent hover:text-red-600">×</button
+												>
+											</form>
+										</span>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		</div>
+	{:else if viewMode === 'paiements'}
+		<div class="rounded-2xl bg-white p-5 shadow-sm">
+			<div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<h1 class="font-clash text-xl text-dark sm:text-2xl">
+						Paiements ({acceptedPlayers.length} joueurs)
+					</h1>
+					<p class="text-sm text-dark-accent">
+						Cotisation annuelle {FEES.annual} € · mensualité {FEES.monthly.garcon} € (hommes) /
+						{FEES.monthly.fille} € (femmes). Ajoute chaque paiement avec sa date.
+					</p>
 				</div>
+				<span class="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-700"
+					>Total encaissé : {totalCollected} €</span
+				>
 			</div>
 
 			{#if acceptedPlayers.length === 0}
@@ -988,45 +1036,131 @@
 				</p>
 			{/if}
 
-			<div class="flex flex-col divide-y divide-dark-accent/10">
+			<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 				{#each acceptedPlayers as player (player.id)}
-					<div class="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<p class="text-sm font-medium text-dark">{player.first_name} {player.last_name}</p>
-							<p class="text-xs text-dark-accent">
-								{genderLabel(player.gender)}{presRate(player)
-									? ` · ${presRate(player)} séances`
-									: ''}
-							</p>
+					<div class="rounded-xl border border-dark-accent/10 p-4">
+						<div class="mb-3 flex items-start justify-between gap-2">
+							<div>
+								<p class="text-sm font-semibold text-dark">
+									{player.first_name}
+									{player.last_name}
+								</p>
+								<p class="text-xs text-dark-accent">
+									{genderLabel(player.gender)} · mensualité
+									{monthlyFee(player) ? `${monthlyFee(player)} €` : '?'}
+								</p>
+							</div>
+							<span class="text-sm font-semibold text-dark">{payTotal(player)} €</span>
 						</div>
-						<form method="POST" action="?/updatePresence" use:enhance class="flex gap-1.5">
+
+						<div class="mb-3 flex flex-wrap gap-2">
+							{#if annualEntry(player)}
+								<span class="rounded-full bg-green-600 px-3 py-1 text-xs font-medium text-white"
+									>✓ Annuel payé le {formatDate(annualEntry(player).date)}</span
+								>
+							{:else}
+								<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700"
+									>✗ Annuel non payé ({FEES.annual} €)</span
+								>
+							{/if}
+							{#if monthEntry(player, currentMonth)}
+								<span class="rounded-full bg-green-600 px-3 py-1 text-xs font-medium text-white"
+									>✓ {monthLabel(currentMonth)} payé le {formatDate(
+										monthEntry(player, currentMonth).date
+									)}</span
+								>
+							{:else}
+								<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700"
+									>✗ {monthLabel(currentMonth)} non payé</span
+								>
+							{/if}
+						</div>
+
+						<form
+							method="POST"
+							action="?/addPayment"
+							use:enhance
+							class="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-[#f4f5f7] p-3 text-sm"
+						>
 							<input type="hidden" name="id" value={player.id} />
-							<input type="hidden" name="date" value={presDate} />
+							<label class="flex flex-col gap-1 text-xs text-dark-accent">
+								Type
+								<select
+									name="type"
+									class="rounded-lg border border-dark-accent/10 bg-white px-2 py-1.5 text-sm text-dark"
+								>
+									<option value="mensuel">Mensualité</option>
+									<option value="annuel">Cotisation annuelle</option>
+								</select>
+							</label>
+							<label class="flex flex-col gap-1 text-xs text-dark-accent">
+								Mois concerné (mensualité)
+								<input
+									type="month"
+									name="mois"
+									value={currentMonth}
+									class="rounded-lg border border-dark-accent/10 bg-white px-2 py-1.5 text-sm text-dark"
+								/>
+							</label>
+							<label class="flex flex-col gap-1 text-xs text-dark-accent">
+								Date du paiement
+								<input
+									type="date"
+									name="date"
+									required
+									value={todayIso}
+									class="rounded-lg border border-dark-accent/10 bg-white px-2 py-1.5 text-sm text-dark"
+								/>
+							</label>
+							<label class="flex flex-col gap-1 text-xs text-dark-accent">
+								Montant € (vide = montant normal)
+								<input
+									type="number"
+									name="montant"
+									min="0"
+									step="0.01"
+									placeholder={monthlyFee(player) ? String(monthlyFee(player)) : '80'}
+									class="rounded-lg border border-dark-accent/10 bg-white px-2 py-1.5 text-sm text-dark"
+								/>
+							</label>
 							<button
 								type="submit"
-								name="status"
-								value={presOf(player, presDate) === 'present' ? '' : 'present'}
-								class="rounded-full px-3 py-1.5 text-xs font-medium {presOf(player, presDate) === 'present'
-									? 'bg-green-600 text-white'
-									: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}">Présent</button
+								class="col-span-2 rounded-xl bg-primary px-3 py-2 text-sm font-medium text-white hover:opacity-90"
 							>
-							<button
-								type="submit"
-								name="status"
-								value={presOf(player, presDate) === 'absent' ? '' : 'absent'}
-								class="rounded-full px-3 py-1.5 text-xs font-medium {presOf(player, presDate) === 'absent'
-									? 'bg-red-600 text-white'
-									: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}">Absent</button
-							>
-							<button
-								type="submit"
-								name="status"
-								value={presOf(player, presDate) === 'excuse' ? '' : 'excuse'}
-								class="rounded-full px-3 py-1.5 text-xs font-medium {presOf(player, presDate) === 'excuse'
-									? 'bg-yellow-500 text-white'
-									: 'bg-[#f4f5f7] text-dark-accent hover:bg-dark-accent/10'}">Excusé</button
-							>
+								Enregistrer le paiement
+							</button>
 						</form>
+
+						{#if payList(player).length === 0}
+							<p class="text-xs text-dark-accent">Aucun paiement enregistré.</p>
+						{:else}
+							<ul class="flex flex-col gap-1.5">
+								{#each payList(player) as entry (entry.id)}
+									<li class="flex items-center justify-between rounded-lg bg-green-50 px-3 py-1.5">
+										<span class="text-sm text-dark">
+											<span class="font-medium">{formatDate(entry.date)}</span>
+											· {entry.type === 'annuel' ? 'Cotisation annuelle' : monthLabel(entry.mois)}
+										</span>
+										<span class="flex items-center gap-2">
+											<span class="text-sm font-semibold text-green-700">{entry.montant} €</span>
+											<form method="POST" action="?/deletePayment" use:enhance class="inline">
+												<input type="hidden" name="id" value={player.id} />
+												<input type="hidden" name="entry" value={entry.id} />
+												<button
+													type="submit"
+													title="Supprimer ce paiement"
+													aria-label="Supprimer ce paiement"
+													onclick={(e) => {
+														if (!confirm('Supprimer ce paiement ?')) e.preventDefault();
+													}}
+													class="text-lg leading-none text-dark-accent hover:text-red-600">×</button
+												>
+											</form>
+										</span>
+									</li>
+								{/each}
+							</ul>
+						{/if}
 					</div>
 				{/each}
 			</div>
@@ -1555,7 +1689,7 @@
 									</button>
 								</td>
 							</tr>
-							{#if viewMode !== 'talent_days' && (player.status === 'accepted' || player.dossier)}
+							{#if viewMode !== 'talent_days' && player.dossier}
 								<tr class="print:hidden">
 									<td colspan="15" class="px-5 pb-4">{@render extraPanel(player)}</td>
 								</tr>

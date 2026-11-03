@@ -201,8 +201,8 @@
 			<p class="rounded border border-dark/20 p-6 text-center text-dark/70">
 				Les inscriptions sont fermées pour le moment. Reviens bientôt !
 			</p>
-			{:else if activeTab === 'academie'}
-				<AcademyApplicationForm {form} idOptional={acceptedLink} />
+			{:else if acceptedLink}
+				<AcademyApplicationForm {form} idOptional={true} />
 		{:else}
 			<form
 				method="POST"
@@ -315,6 +315,77 @@
 						<span class="text-xs text-dark-accent">Inscriptions ouvertes de 16 à 28 ans</span>
 					</label>
 
+					{#if activeTab === 'academie'}
+						<label class="flex flex-col gap-2">
+							<span class="text-dark/70">Lieu de naissance</span>
+							<input
+								name="birth_place"
+								required
+								value={form?.values?.birth_place ?? ''}
+								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+							/>
+						</label>
+						<label class="flex flex-col gap-2">
+							<span class="text-dark/70">Nationalité</span>
+							<input
+								name="nationality"
+								required
+								value={form?.values?.nationality ?? ''}
+								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+							/>
+						</label>
+
+						<label class="flex flex-col gap-2 sm:col-span-2">
+							<span class="text-dark/70">Adresse postale</span>
+							<input
+								name="address"
+								required
+								value={form?.values?.address ?? ''}
+								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+							/>
+						</label>
+						<label class="flex flex-col gap-2">
+							<span class="text-dark/70">Code postal</span>
+							<input
+								name="postal_code"
+								required
+								value={form?.values?.postal_code ?? ''}
+								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
+							/>
+						</label>
+
+						<div class="mb-4">
+							<label class="mb-1 block text-dark/70" for="current_club">Club actuel</label>
+							<input
+								id="current_club"
+								name="current_club"
+								type="text"
+								class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
+							/>
+						</div>
+
+						<div class="mb-4">
+							<label class="mb-1 block text-dark/70" for="division">Division</label>
+							<select
+								id="division"
+								name="division"
+								class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
+							>
+								<option value="">Sélectionne ta division</option>
+								<option value="nationale_1">Nationale 1</option>
+								<option value="nationale_2">Nationale 2</option>
+								<option value="nationale_3">Nationale 3</option>
+								<option value="provinciale_1">Provinciale 1</option>
+								<option value="provinciale_2">Provinciale 2</option>
+								<option value="provinciale_3">Provinciale 3</option>
+								<option value="provinciale_4">Provinciale 4</option>
+								<option value="regionale">Régionale</option>
+								<option value="u23">U23</option>
+								<option value="u18_elite">U18 Elite</option>
+								<option value="autre">Autre</option>
+							</select>
+						</div>
+					{/if}
 					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Poste préféré</span>
 						<select

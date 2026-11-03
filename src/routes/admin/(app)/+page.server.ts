@@ -38,7 +38,7 @@ function getAuthHeaders() {
 	return { Authorization: `Bearer ${env.DIRECTUS_SERVICE_TOKEN}` };
 }
 
-function requiredFieldsFor(type: string) {
+function requiredFieldsFor(type: string, accepted = false) {
 	const base = [
 		{ key: 'first_name', label: 'Prénom' },
 		{ key: 'last_name', label: 'Nom' },
@@ -51,8 +51,18 @@ function requiredFieldsFor(type: string) {
 		{ key: 'id_card_back', label: "Carte d'identité (verso)" }
 	];
 
-	// « Rejoindre l'académie » : le dossier de candidature est requis.
-	if (type === 'academie') base.push({ key: 'dossier', label: 'Dossier de candidature' });
+	// Formulaire de base « Rejoindre l'académie »
+	if (type === 'academie' && !accepted) {
+		base.push(
+			{ key: 'birth_place', label: 'Lieu de naissance' },
+			{ key: 'nationality', label: 'Nationalité' },
+			{ key: 'address', label: 'Adresse postale' },
+			{ key: 'postal_code', label: 'Code postal' }
+		);
+	}
+
+	// Joueur accepté : il doit avoir complété le grand formulaire (dossier).
+	if (accepted) base.push({ key: 'dossier', label: 'Dossier de candidature' });
 
 	return base;
 }
@@ -101,8 +111,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	const players = (registrations ?? []).map((r: Record<string, any>) => {
 		// Une fois accepté, le joueur devient membre de l'académie : les infos
 		// complètes deviennent requises, même s'il est arrivé via Talent Day.
-		const effectiveType = r.status === 'accepted' ? 'academie' : r.type;
-		const fields = requiredFieldsFor(effectiveType);
+		const fields = requiredFieldsFor(r.type, r.status === 'accepted');
 		const missing = fields.filter(({ key }) => !r[key]).map(({ label }) => label);
 		const siteProfile = profileByName.get(nameKey(`${r.first_name} ${r.last_name}`)) ?? null;
 		return {
@@ -348,79 +357,74 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	// Suivi des paiements : cotisation annuelle et mensualités (une case = un paiement).
-	updatePayment: async ({ request, fetch }) => {
+	// Paiements : chaque paiement est une ligne avec sa date, son type et son montant.
+	addPayment: async ({ request, fetch }) => {
 		const data = await request.formData();
 		const id = data.get('id');
-		const kind = String(data.get('kind') ?? '');
-		const key = String(data.get('key') ?? '');
-		const paid = String(data.get('paid') ?? '') === 'true';
+		const type = String(data.get('type') ?? '');
+		const date = String(data.get('date') ?? '');
+		const mois = String(data.get('mois') ?? '');
+		const montantRaw = String(data.get('montant') ?? '').replace(',', '.').trim();
 
-		if (kind !== 'annual' && !/^\d{4}-\d{2}$/.test(key)) {
-			return fail(400, { error: 'Paiement invalide.' });
+		if (!['annuel', 'mensuel'].includes(type)) return fail(400, { error: 'Type invalide.' });
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, { error: 'Date de paiement invalide.' });
+		if (type === 'mensuel' && !/^\d{4}-\d{2}$/.test(mois)) {
+			return fail(400, { error: 'Choisis le mois concerné.' });
 		}
 
-		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=paiements`, {
+		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=paiements,gender`, {
 			headers: getAuthHeaders()
 		});
 		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
-		const current = (await res.json()).data?.paiements ?? {};
-		const paiements = { annual: current.annual === true, months: { ...(current.months ?? {}) } };
+		const row = (await res.json()).data ?? {};
+		const list: Record<string, unknown>[] = Array.isArray(row.paiements) ? row.paiements : [];
 
-		if (kind === 'annual') paiements.annual = paid;
-		else if (paid) paiements.months[key] = true;
-		else delete paiements.months[key];
+		// Montant par défaut : 150 € (annuel), 80 € garçons / 50 € filles (mensuel).
+		const g = String(row.gender ?? '').toLowerCase();
+		const isFemale = ['fille', 'femme', 'female', 'f', 'girl', 'woman'].includes(g);
+		const defaultAmount = type === 'annuel' ? 150 : isFemale ? 50 : 80;
+		const montant = montantRaw && Number.isFinite(Number(montantRaw)) ? Number(montantRaw) : defaultAmount;
+
+		list.push({
+			id: crypto.randomUUID(),
+			type,
+			mois: type === 'mensuel' ? mois : null,
+			date,
+			montant
+		});
 
 		const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-			body: JSON.stringify({ paiements })
+			body: JSON.stringify({ paiements: list })
 		});
 		if (!patch.ok) {
 			const errorBody = await patch.json().catch(() => null);
-			console.error('Payment update failed:', patch.status, JSON.stringify(errorBody));
+			console.error('Payment add failed:', patch.status, JSON.stringify(errorBody));
 			return fail(500, { error: "Le paiement n'a pas pu être enregistré." });
 		}
 		return { success: true };
 	},
 
-	// Envoie l'email « viens te tester ce week-end » à tous les absents du Talent Day
-	// (présence = « Pas venu ») qui ne l'ont pas encore reçu.
-	sendMakeup: async ({ fetch }) => {
-		const res = await fetch(
-			`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[type][_eq]=talent_days&filter[venue][_eq]=false&limit=-1&fields=id,email,first_name,gender,rattrapage_envoye`,
-			{ headers: getAuthHeaders() }
-		);
-		if (!res.ok) return fail(500, { error: 'Impossible de lire les inscrits.' });
-		const rows: Record<string, any>[] = (await res.json()).data ?? [];
-		const targets = rows.filter((r) => r.email && r.rattrapage_envoye !== true);
+	deletePayment: async ({ request, fetch }) => {
+		const data = await request.formData();
+		const id = data.get('id');
+		const entry = String(data.get('entry') ?? '');
 
-		if (targets.length === 0) {
-			return fail(400, { error: "Aucun absent à contacter (marque d'abord les « Pas venu »)." });
-		}
+		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=paiements`, {
+			headers: getAuthHeaders()
+		});
+		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
+		const list: Record<string, unknown>[] = (await res.json()).data?.paiements ?? [];
+		const next = Array.isArray(list) ? list.filter((e) => e.id !== entry) : [];
 
-		try {
-			await sendMakeupEmails(
-				targets.map((r) => ({ to: r.email, firstName: r.first_name, gender: r.gender }))
-			);
-		} catch (err) {
-			console.error('Makeup emails failed:', err);
-			return fail(502, {
-				error: `Emails non envoyés : ${err instanceof Error ? err.message : String(err)}`
-			});
-		}
-
-		await Promise.all(
-			targets.map((r) =>
-				fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${r.id}`, {
-					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-					body: JSON.stringify({ rattrapage_envoye: true })
-				}).catch(() => null)
-			)
-		);
-
-		return { success: true, makeupSent: targets.length };
+		const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+			body: JSON.stringify({ paiements: next })
+		});
+		if (!patch.ok) return fail(500, { error: "La suppression a échoué." });
+		return { success: true };
 	},
 
 	// Présences des joueurs de l'académie : un statut par joueur et par séance (date).

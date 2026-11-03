@@ -88,6 +88,7 @@
 	class="flex flex-col gap-6"
 >
 	<input type="hidden" name="type" value="academie" />
+	<input type="hidden" name="dossier_form" value="1" />
 
 	<p class="rounded-lg bg-primary/5 px-4 py-3 text-sm text-dark">
 		Les champs marqués d'un * sont obligatoires. Après étude du dossier, l'Academy contactera les
