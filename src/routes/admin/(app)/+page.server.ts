@@ -436,6 +436,45 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
+	// Envoie l'email « viens te tester ce week-end » à tous les absents du Talent Day
+	// (présence = « Pas venu ») qui ne l'ont pas encore reçu.
+	sendMakeup: async ({ fetch }) => {
+		const res = await fetch(
+			`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[type][_eq]=talent_days&filter[venue][_eq]=false&limit=-1&fields=id,email,first_name,gender,rattrapage_envoye`,
+			{ headers: getAuthHeaders() }
+		);
+		if (!res.ok) return fail(500, { error: 'Impossible de lire les inscrits.' });
+		const rows: Record<string, any>[] = (await res.json()).data ?? [];
+		const targets = rows.filter((r) => r.email && r.rattrapage_envoye !== true);
+
+		if (targets.length === 0) {
+			return fail(400, { error: "Aucun absent à contacter (marque d'abord les « Pas venu »)." });
+		}
+
+		try {
+			await sendMakeupEmails(
+				targets.map((r) => ({ to: r.email, firstName: r.first_name, gender: r.gender }))
+			);
+		} catch (err) {
+			console.error('Makeup emails failed:', err);
+			return fail(502, {
+				error: `Emails non envoyés : ${err instanceof Error ? err.message : String(err)}`
+			});
+		}
+
+		await Promise.all(
+			targets.map((r) =>
+				fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${r.id}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+					body: JSON.stringify({ rattrapage_envoye: true })
+				}).catch(() => null)
+			)
+		);
+
+		return { success: true, makeupSent: targets.length };
+	},
+
 	// Présences des joueurs de l'académie : un statut par joueur et par séance (date).
 	updatePresence: async ({ request, fetch }) => {
 		const data = await request.formData();
