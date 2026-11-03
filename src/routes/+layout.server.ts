@@ -1,4 +1,5 @@
 import { PUBLIC_DIRECTUS_URL } from '$env/static/public';
+import { isPast } from '$lib/server/talentDay';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ fetch }) => {
@@ -15,7 +16,7 @@ export const load: LayoutServerLoad = async ({ fetch }) => {
 
 	return {
 		talentDayPopup: {
-			active: data?.active ?? false,
+			active: (data?.active ?? false) && !isPast(data?.date),
 			date: formattedDate,
 			title: data?.title ?? '',
 			message: data?.message ?? '',

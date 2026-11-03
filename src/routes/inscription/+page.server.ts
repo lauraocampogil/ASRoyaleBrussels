@@ -5,13 +5,14 @@ import { cleanInstagram } from '$lib/instagram';
 import type { Actions, PageServerLoad } from './$types';
 import { sendRegistrationConfirmationEmail } from '$lib/server/email';
 import { looksLikeIdDocument } from '$lib/server/idVerification';
+import { isPast } from '$lib/server/talentDay';
 import { findAcceptedByEmail, completeRegistration } from '$lib/server/registrations';
 
 export const load: PageServerLoad = async ({ fetch }) => {
 	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
 	const { data } = await res.json();
 
-	const talentDayActive = data?.talent_day_active ?? false;
+	const talentDayActive = (data?.talent_day_active ?? false) && !isPast(data?.talent_day_date);
 	const academyActive = data?.academy_active ?? false;
 	const talentDayDate = data?.talent_day_date
 		? new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' }).format(
@@ -85,6 +86,17 @@ export const actions: Actions = {
 			phone: data.get('phone')?.toString() ?? '',
 			instagram: cleanInstagram(data.get('instagram')?.toString())
 		};
+
+		if (!isAcademie) {
+			const settingsRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
+			const settings = await settingsRes.json().catch(() => null);
+			if (!settings?.data?.talent_day_active || isPast(settings?.data?.talent_day_date)) {
+				return fail(403, {
+					error: "Les inscriptions au Talent Day sont terminées. Tu peux rejoindre l'académie.",
+					values
+				});
+			}
+		}
 
 		if (isAcademie) {
 			const settingsRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
