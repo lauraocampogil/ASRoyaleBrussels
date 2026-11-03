@@ -208,6 +208,24 @@
 			</p>
 		{/if}
 
+		{#if !data.talentDayActive && !acceptedLink && !form?.success}
+			<div class="mb-8 rounded border border-primary bg-primary/5 p-6 text-center">
+				<p class="font-clash text-title-md text-primary">Cette édition du Talent Day est terminée</p>
+				<p class="mt-2 text-dark/70">
+					Merci à tous ceux qui sont venus ! Reste à l'affût : la prochaine édition sera annoncée
+					très bientôt sur notre site et sur nos réseaux sociaux.
+				</p>
+				<a
+					href="https://www.instagram.com/brusselssummitacademy/"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="mt-4 inline-block text-sm font-semibold text-primary underline"
+				>
+					Suivre @brusselssummitacademy
+				</a>
+			</div>
+		{/if}
+
 		{#if form?.success}
 			<div class="rounded border border-primary bg-primary/5 p-6 text-center">
 				<p class="font-clash text-title-md text-primary">Demande envoyée !</p>
