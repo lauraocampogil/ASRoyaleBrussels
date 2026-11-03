@@ -23,6 +23,9 @@
 			String(y.date).localeCompare(String(x.date))
 		);
 	const currentMonth = new Date().toISOString().slice(0, 7);
+	let payDate = $state(new Date().toISOString().slice(0, 10));
+	let payType = $state<'mensuel' | 'annuel'>('mensuel');
+	let payMonth = $state(new Date().toISOString().slice(0, 7));
 	const annualEntry = (player: any) => payList(player).find((e) => e.type === 'annuel');
 	const monthEntry = (player: any, key: string) =>
 		payList(player).find((e) => e.type === 'mensuel' && e.mois === key);
@@ -55,15 +58,26 @@
 	let makeupPending = $derived(
 		tdAll.filter((p: any) => p.venue === false && p.rattrapage_envoye !== true && p.email).length
 	);
-	// --- Présences des joueurs de l'académie : une boîte par joueur, une ligne par date ---
+	// --- Présences : une date, un statut par joueur, un seul enregistrement ---
 	const todayIso = new Date().toISOString().slice(0, 10);
-	const presEntries = (player: any): [string, string][] =>
-		Object.entries(player.presences ?? {}).sort((x, y) => y[0].localeCompare(x[0])) as [
-			string,
-			string
-		][];
-	const presCount = (player: any, status: string) =>
-		presEntries(player).filter(([, st]) => st === status).length;
+	let presDate = $state(todayIso);
+	let presForm = $state<HTMLFormElement | null>(null);
+	let presMsg = $state('');
+	const presOf = (player: any, date: string): string => player.presences?.[date] ?? '';
+	const presTotal = (player: any, status: string) =>
+		Object.values(player.presences ?? {}).filter((v) => v === status).length;
+	function markAll(status: 'present' | 'absent') {
+		presForm
+			?.querySelectorAll<HTMLInputElement>(`input[type="radio"][value="${status}"]`)
+			.forEach((r) => (r.checked = true));
+	}
+	let payForm = $state<HTMLFormElement | null>(null);
+	let payMsg = $state('');
+	function checkAllPay() {
+		payForm
+			?.querySelectorAll<HTMLInputElement>('input[type="checkbox"][name="paid"]:not(:disabled)')
+			.forEach((c) => (c.checked = true));
+	}
 	let showAdd = $state(false);
 	let addError = $state('');
 
@@ -923,113 +937,115 @@
 			<h1 class="font-clash mb-1 text-xl text-dark sm:text-2xl">
 				Présences ({acceptedPlayers.length} joueurs)
 			</h1>
-			<p class="mb-6 text-sm text-dark-accent">
-				Pour chaque joueur, ajoute la date et sa présence. Chaque ajout reste dans sa boîte.
+			<p class="mb-5 text-sm text-dark-accent">
+				Choisis la date, coche Présent ou Absent pour chaque joueur, puis enregistre une seule fois.
 			</p>
 
 			{#if acceptedPlayers.length === 0}
 				<p class="rounded-xl bg-[#f4f5f7] px-4 py-3 text-sm text-dark-accent">
 					Aucun joueur accepté pour le moment.
 				</p>
-			{/if}
-
-			<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-				{#each acceptedPlayers as player (player.id)}
-					<div class="rounded-xl border border-dark-accent/10 p-4">
-						<div class="mb-3 flex items-start justify-between gap-2">
-							<div>
-								<p class="text-sm font-semibold text-dark">
-									{player.first_name}
-									{player.last_name}
-								</p>
-								<p class="text-xs text-dark-accent">{genderLabel(player.gender)}</p>
-							</div>
-							<div class="flex gap-1.5">
-								<span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
-									>{presCount(player, 'present')} présent(s)</span
-								>
-								<span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700"
-									>{presCount(player, 'absent')} absent(s)</span
-								>
-							</div>
-						</div>
-
-						<form
-							method="POST"
-							action="?/updatePresence"
-							use:enhance
-							class="mb-3 flex flex-wrap items-center gap-2"
-						>
-							<input type="hidden" name="id" value={player.id} />
+			{:else}
+				<form
+					method="POST"
+					action="?/savePresences"
+					bind:this={presForm}
+					use:enhance={() => {
+						presMsg = 'Enregistrement...';
+						return async ({ result, update }) => {
+							presMsg =
+								result.type === 'success'
+									? `✓ Enregistré (${(result.data as any)?.saved ?? 0} modifié(s))`
+									: String((result as any).data?.error ?? 'Erreur');
+							await update({ reset: false });
+						};
+					}}
+				>
+					<div
+						class="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-[#f4f5f7] p-3"
+					>
+						<label class="flex items-center gap-2 text-sm font-medium text-dark">
+							Date
 							<input
 								type="date"
 								name="date"
 								required
-								value={todayIso}
-								class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-1.5 text-sm text-dark"
+								bind:value={presDate}
+								class="rounded-xl border border-dark-accent/10 bg-white px-3 py-2 text-sm text-dark"
 							/>
-							<select
-								name="status"
-								class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-1.5 text-sm text-dark"
-							>
-								<option value="present">Présent</option>
-								<option value="absent">Absent</option>
-							</select>
-							<button
-								type="submit"
-								class="rounded-xl bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
-							>
-								Ajouter
-							</button>
-						</form>
-
-						{#if presEntries(player).length === 0}
-							<p class="text-xs text-dark-accent">Aucune présence enregistrée.</p>
-						{:else}
-							<ul class="flex flex-col gap-1.5">
-								{#each presEntries(player) as [date, st] (date)}
-									<li class="flex items-center justify-between rounded-lg bg-[#f4f5f7] px-3 py-1.5">
-										<span class="text-sm text-dark">{formatDate(date)}</span>
-										<span class="flex items-center gap-2">
-											<span
-												class="rounded-full px-2 py-0.5 text-xs font-medium {st === 'present'
-													? 'bg-green-600 text-white'
-													: st === 'absent'
-														? 'bg-red-600 text-white'
-														: 'bg-yellow-500 text-white'}"
-												>{st === 'present' ? 'Présent' : st === 'absent' ? 'Absent' : 'Excusé'}</span
-											>
-											<form method="POST" action="?/updatePresence" use:enhance class="inline">
-												<input type="hidden" name="id" value={player.id} />
-												<input type="hidden" name="date" value={date} />
-												<button
-													type="submit"
-													name="status"
-													value=""
-													title="Supprimer cette ligne"
-													aria-label="Supprimer cette ligne"
-													class="text-lg leading-none text-dark-accent hover:text-red-600">×</button
-												>
-											</form>
-										</span>
-									</li>
-								{/each}
-							</ul>
-						{/if}
+						</label>
+						<button
+							type="button"
+							onclick={() => markAll('present')}
+							class="rounded-xl bg-white px-3 py-2 text-xs text-dark-accent hover:bg-dark-accent/10"
+							>Tous présents</button
+						>
+						<button
+							type="submit"
+							class="ml-auto rounded-xl bg-primary px-5 py-2 text-sm font-medium text-white hover:opacity-90"
+							>Enregistrer</button
+						>
+						{#if presMsg}<span class="w-full text-xs text-dark-accent sm:w-auto">{presMsg}</span>{/if}
 					</div>
-				{/each}
-			</div>
+
+					{#key presDate}
+						<ul class="flex flex-col divide-y divide-dark-accent/10">
+							{#each acceptedPlayers as player (player.id)}
+								<li class="flex items-center justify-between gap-3 py-2.5">
+									<div class="min-w-0">
+										<p class="truncate text-sm font-medium text-dark">
+											{player.first_name}
+											{player.last_name}
+										</p>
+										<p class="text-xs text-dark-accent">
+											{presTotal(player, 'present')} présent(s) · {presTotal(player, 'absent')} absent(s)
+										</p>
+									</div>
+									<div class="flex shrink-0 gap-2">
+										<label class="cursor-pointer">
+											<input
+												type="radio"
+												name={`s_${player.id}`}
+												value="present"
+												checked={presOf(player, presDate) === 'present'}
+												class="peer sr-only"
+											/>
+											<span
+												class="block rounded-full bg-[#f4f5f7] px-4 py-1.5 text-xs font-medium text-dark-accent peer-checked:bg-green-600 peer-checked:text-white"
+												>Présent</span
+											>
+										</label>
+										<label class="cursor-pointer">
+											<input
+												type="radio"
+												name={`s_${player.id}`}
+												value="absent"
+												checked={presOf(player, presDate) === 'absent'}
+												class="peer sr-only"
+											/>
+											<span
+												class="block rounded-full bg-[#f4f5f7] px-4 py-1.5 text-xs font-medium text-dark-accent peer-checked:bg-red-600 peer-checked:text-white"
+												>Absent</span
+											>
+										</label>
+									</div>
+								</li>
+							{/each}
+						</ul>
+					{/key}
+				</form>
+			{/if}
 		</div>
 	{:else if viewMode === 'paiements'}
 		<div class="rounded-2xl bg-white p-5 shadow-sm">
-			<div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+			<div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<h1 class="font-clash text-xl text-dark sm:text-2xl">
 						Paiements ({acceptedPlayers.length} joueurs)
 					</h1>
 					<p class="text-sm text-dark-accent">
-						Cotisation annuelle {FEES.annual} € · mensualité {FEES.monthly.garcon} € (hommes) /
-						{FEES.monthly.fille} € (femmes). Ajoute chaque paiement avec sa date.
+						Annuel {FEES.annual} € · mensuel {FEES.monthly.garcon} € (hommes) / {FEES.monthly.fille}
+						€ (femmes). Choisis la date et la période, coche les joueurs qui ont payé, enregistre.
 					</p>
 				</div>
 				<span class="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-700"
@@ -1041,115 +1057,121 @@
 				<p class="rounded-xl bg-[#f4f5f7] px-4 py-3 text-sm text-dark-accent">
 					Aucun joueur accepté pour le moment.
 				</p>
-			{/if}
+			{:else}
+				<form
+					method="POST"
+					action="?/savePayments"
+					bind:this={payForm}
+					use:enhance={() => {
+						payMsg = 'Enregistrement...';
+						return async ({ result, update }) => {
+							payMsg =
+								result.type === 'success'
+									? `✓ ${(result.data as any)?.saved ?? 0} paiement(s) enregistré(s)`
+									: String((result as any).data?.error ?? 'Erreur');
+							await update({ reset: false });
+						};
+					}}
+				>
+					<div
+						class="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-[#f4f5f7] p-3"
+					>
+						<label class="flex items-center gap-2 text-sm font-medium text-dark">
+							Date du paiement
+							<input
+								type="date"
+								name="date"
+								required
+								bind:value={payDate}
+								class="rounded-xl border border-dark-accent/10 bg-white px-3 py-2 text-sm text-dark"
+							/>
+						</label>
+						<select
+							name="type"
+							bind:value={payType}
+							class="rounded-xl border border-dark-accent/10 bg-white px-3 py-2 text-sm text-dark"
+						>
+							<option value="mensuel">Mensualité</option>
+							<option value="annuel">Cotisation annuelle</option>
+						</select>
+						{#if payType === 'mensuel'}
+							<input
+								type="month"
+								name="mois"
+								bind:value={payMonth}
+								class="rounded-xl border border-dark-accent/10 bg-white px-3 py-2 text-sm text-dark"
+							/>
+						{/if}
+						<button
+							type="button"
+							onclick={checkAllPay}
+							class="rounded-xl bg-white px-3 py-2 text-xs text-dark-accent hover:bg-dark-accent/10"
+							>Tout cocher</button
+						>
+						<button
+							type="submit"
+							class="ml-auto rounded-xl bg-primary px-5 py-2 text-sm font-medium text-white hover:opacity-90"
+							>Enregistrer</button
+						>
+						{#if payMsg}<span class="w-full text-xs text-dark-accent sm:w-auto">{payMsg}</span>{/if}
+					</div>
 
-			<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-				{#each acceptedPlayers as player (player.id)}
-					<div class="rounded-xl border border-dark-accent/10 p-4">
-						<div class="mb-3 flex items-start justify-between gap-2">
+					{#key `${payType}-${payMonth}`}
+						<ul class="flex flex-col divide-y divide-dark-accent/10">
+							{#each acceptedPlayers as player (player.id)}
+								{@const done = payType === 'annuel' ? annualEntry(player) : monthEntry(player, payMonth)}
+								<li class="flex items-center justify-between gap-3 py-2.5">
+									<div class="min-w-0">
+										<p class="truncate text-sm font-medium text-dark">
+											{player.first_name}
+											{player.last_name}
+										</p>
+										<p class="text-xs text-dark-accent">
+											{payType === 'annuel'
+												? `${FEES.annual} €`
+												: monthlyFee(player)
+													? `${monthlyFee(player)} €`
+													: 'genre ?'} · total payé {payTotal(player)} €
+										</p>
+									</div>
+									{#if done}
+										<span class="shrink-0 rounded-full bg-green-600 px-3 py-1.5 text-xs font-medium text-white"
+											>✓ Payé le {formatDate(done.date)}</span
+										>
+									{:else}
+										<label class="cursor-pointer">
+											<input type="checkbox" name="paid" value={player.id} class="peer sr-only" />
+											<span
+												class="block rounded-full bg-red-100 px-4 py-1.5 text-xs font-medium text-red-700 peer-checked:bg-green-600 peer-checked:text-white"
+												>Non payé · cocher</span
+											>
+										</label>
+									{/if}
+								</li>
+							{/each}
+						</ul>
+					{/key}
+				</form>
+
+				<details class="mt-6 rounded-xl border border-dark-accent/10 p-3">
+					<summary class="cursor-pointer text-sm font-semibold text-dark"
+						>Historique des paiements (corriger une erreur)</summary
+					>
+					<div class="mt-3 flex flex-col gap-3">
+						{#each acceptedPlayers.filter((p: any) => payList(p).length > 0) as player (player.id)}
 							<div>
-								<p class="text-sm font-semibold text-dark">
+								<p class="text-sm font-medium text-dark">
 									{player.first_name}
 									{player.last_name}
 								</p>
-								<p class="text-xs text-dark-accent">
-									{genderLabel(player.gender)} · mensualité
-									{monthlyFee(player) ? `${monthlyFee(player)} €` : '?'}
-								</p>
-							</div>
-							<span class="text-sm font-semibold text-dark">{payTotal(player)} €</span>
-						</div>
-
-						<div class="mb-3 flex flex-wrap gap-2">
-							{#if annualEntry(player)}
-								<span class="rounded-full bg-green-600 px-3 py-1 text-xs font-medium text-white"
-									>✓ Annuel payé le {formatDate(annualEntry(player).date)}</span
-								>
-							{:else}
-								<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700"
-									>✗ Annuel non payé ({FEES.annual} €)</span
-								>
-							{/if}
-							{#if monthEntry(player, currentMonth)}
-								<span class="rounded-full bg-green-600 px-3 py-1 text-xs font-medium text-white"
-									>✓ {monthLabel(currentMonth)} payé le {formatDate(
-										monthEntry(player, currentMonth).date
-									)}</span
-								>
-							{:else}
-								<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700"
-									>✗ {monthLabel(currentMonth)} non payé</span
-								>
-							{/if}
-						</div>
-
-						<form
-							method="POST"
-							action="?/addPayment"
-							use:enhance
-							class="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-[#f4f5f7] p-3 text-sm"
-						>
-							<input type="hidden" name="id" value={player.id} />
-							<label class="flex flex-col gap-1 text-xs text-dark-accent">
-								Type
-								<select
-									name="type"
-									class="rounded-lg border border-dark-accent/10 bg-white px-2 py-1.5 text-sm text-dark"
-								>
-									<option value="mensuel">Mensualité</option>
-									<option value="annuel">Cotisation annuelle</option>
-								</select>
-							</label>
-							<label class="flex flex-col gap-1 text-xs text-dark-accent">
-								Mois concerné (mensualité)
-								<input
-									type="month"
-									name="mois"
-									value={currentMonth}
-									class="rounded-lg border border-dark-accent/10 bg-white px-2 py-1.5 text-sm text-dark"
-								/>
-							</label>
-							<label class="flex flex-col gap-1 text-xs text-dark-accent">
-								Date du paiement
-								<input
-									type="date"
-									name="date"
-									required
-									value={todayIso}
-									class="rounded-lg border border-dark-accent/10 bg-white px-2 py-1.5 text-sm text-dark"
-								/>
-							</label>
-							<label class="flex flex-col gap-1 text-xs text-dark-accent">
-								Montant € (vide = montant normal)
-								<input
-									type="number"
-									name="montant"
-									min="0"
-									step="0.01"
-									placeholder={monthlyFee(player) ? String(monthlyFee(player)) : '80'}
-									class="rounded-lg border border-dark-accent/10 bg-white px-2 py-1.5 text-sm text-dark"
-								/>
-							</label>
-							<button
-								type="submit"
-								class="col-span-2 rounded-xl bg-primary px-3 py-2 text-sm font-medium text-white hover:opacity-90"
-							>
-								Enregistrer le paiement
-							</button>
-						</form>
-
-						{#if payList(player).length === 0}
-							<p class="text-xs text-dark-accent">Aucun paiement enregistré.</p>
-						{:else}
-							<ul class="flex flex-col gap-1.5">
-								{#each payList(player) as entry (entry.id)}
-									<li class="flex items-center justify-between rounded-lg bg-green-50 px-3 py-1.5">
-										<span class="text-sm text-dark">
-											<span class="font-medium">{formatDate(entry.date)}</span>
-											· {entry.type === 'annuel' ? 'Cotisation annuelle' : monthLabel(entry.mois)}
-										</span>
-										<span class="flex items-center gap-2">
-											<span class="text-sm font-semibold text-green-700">{entry.montant} €</span>
+								<ul class="mt-1 flex flex-col gap-1">
+									{#each payList(player) as entry (entry.id)}
+										<li class="flex items-center justify-between rounded-lg bg-green-50 px-3 py-1.5 text-sm">
+											<span>
+												{formatDate(entry.date)} ·
+												{entry.type === 'annuel' ? 'Cotisation annuelle' : monthLabel(entry.mois)}
+												· {entry.montant} €
+											</span>
 											<form method="POST" action="?/deletePayment" use:enhance class="inline">
 												<input type="hidden" name="id" value={player.id} />
 												<input type="hidden" name="entry" value={entry.id} />
@@ -1163,14 +1185,14 @@
 													class="text-lg leading-none text-dark-accent hover:text-red-600">×</button
 												>
 											</form>
-										</span>
-									</li>
-								{/each}
-							</ul>
-						{/if}
+										</li>
+									{/each}
+								</ul>
+							</div>
+						{/each}
 					</div>
-				{/each}
-			</div>
+				</details>
+			{/if}
 		</div>
 	{:else if viewMode === 'stats'}
 		<div class="rounded-2xl bg-white p-5 shadow-sm">

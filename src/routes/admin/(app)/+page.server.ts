@@ -366,53 +366,62 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	// Paiements : chaque paiement est une ligne avec sa date, son type et son montant.
-	addPayment: async ({ request, fetch }) => {
+	// Paiements : on choisit une date, un type (et un mois), on coche les joueurs qui ont payé,
+	// puis un seul clic enregistre tout. Un joueur déjà payé pour cette période est ignoré.
+	savePayments: async ({ request, fetch }) => {
 		const data = await request.formData();
-		const id = data.get('id');
 		const type = String(data.get('type') ?? '');
 		const date = String(data.get('date') ?? '');
 		const mois = String(data.get('mois') ?? '');
-		const montantRaw = String(data.get('montant') ?? '').replace(',', '.').trim();
+		const ids = data.getAll('paid').map(String);
 
 		if (!['annuel', 'mensuel'].includes(type)) return fail(400, { error: 'Type invalide.' });
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, { error: 'Date de paiement invalide.' });
 		if (type === 'mensuel' && !/^\d{4}-\d{2}$/.test(mois)) {
 			return fail(400, { error: 'Choisis le mois concerné.' });
 		}
+		if (ids.length === 0) return fail(400, { error: 'Coche au moins un joueur.' });
 
-		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=paiements,gender`, {
-			headers: getAuthHeaders()
-		});
-		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
-		const row = (await res.json()).data ?? {};
-		const list: Record<string, unknown>[] = Array.isArray(row.paiements) ? row.paiements : [];
+		const res = await fetch(
+			`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[status][_eq]=accepted&limit=-1&fields=id,gender,paiements`,
+			{ headers: getAuthHeaders() }
+		);
+		if (!res.ok) return fail(500, { error: 'Impossible de lire les joueurs.' });
+		const rows: Record<string, any>[] = (await res.json()).data ?? [];
 
-		// Montant par défaut : 150 € (annuel), 80 € garçons / 50 € filles (mensuel).
-		const g = String(row.gender ?? '').toLowerCase();
-		const isFemale = ['fille', 'femme', 'female', 'f', 'girl', 'woman'].includes(g);
-		const defaultAmount = type === 'annuel' ? 150 : isFemale ? 50 : 80;
-		const montant = montantRaw && Number.isFinite(Number(montantRaw)) ? Number(montantRaw) : defaultAmount;
+		let saved = 0;
+		await Promise.all(
+			rows
+				.filter((r) => ids.includes(String(r.id)))
+				.map(async (r) => {
+					const list: Record<string, unknown>[] = Array.isArray(r.paiements) ? r.paiements : [];
+					const already = list.some(
+						(e) => e.type === type && (type === 'annuel' || e.mois === mois)
+					);
+					if (already) return;
 
-		list.push({
-			id: crypto.randomUUID(),
-			type,
-			mois: type === 'mensuel' ? mois : null,
-			date,
-			montant
-		});
+					// Montant : 150 € (annuel), 80 € garçons / 50 € filles (mensuel).
+					const g = String(r.gender ?? '').toLowerCase();
+					const isFemale = ['fille', 'femme', 'female', 'f', 'girl', 'woman'].includes(g);
+					const montant = type === 'annuel' ? 150 : isFemale ? 50 : 80;
 
-		const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-			body: JSON.stringify({ paiements: list })
-		});
-		if (!patch.ok) {
-			const errorBody = await patch.json().catch(() => null);
-			console.error('Payment add failed:', patch.status, JSON.stringify(errorBody));
-			return fail(500, { error: "Le paiement n'a pas pu être enregistré." });
-		}
-		return { success: true };
+					list.push({
+						id: crypto.randomUUID(),
+						type,
+						mois: type === 'mensuel' ? mois : null,
+						date,
+						montant
+					});
+					const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${r.id}`, {
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+						body: JSON.stringify({ paiements: list })
+					});
+					if (patch.ok) saved++;
+				})
+		);
+
+		return { success: true, saved };
 	},
 
 	deletePayment: async ({ request, fetch }) => {
@@ -475,38 +484,43 @@ export const actions: Actions = {
 		return { success: true, makeupSent: targets.length };
 	},
 
-	// Présences des joueurs de l'académie : un statut par joueur et par séance (date).
-	updatePresence: async ({ request, fetch }) => {
+	// Présences : une date, un statut par joueur, un seul clic pour tout enregistrer.
+	savePresences: async ({ request, fetch }) => {
 		const data = await request.formData();
-		const id = data.get('id');
 		const date = String(data.get('date') ?? '');
-		const status = String(data.get('status') ?? '');
-
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, { error: 'Date invalide.' });
-		if (!['present', 'absent', 'excuse', ''].includes(status)) {
-			return fail(400, { error: 'Statut invalide.' });
+
+		const wanted = new Map<string, string>();
+		for (const [key, value] of data.entries()) {
+			if (key.startsWith('s_') && ['present', 'absent'].includes(String(value))) {
+				wanted.set(key.slice(2), String(value));
+			}
 		}
+		if (wanted.size === 0) return fail(400, { error: 'Choisis Présent ou Absent pour au moins un joueur.' });
 
-		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=presences`, {
-			headers: getAuthHeaders()
-		});
-		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
-		const presences = { ...((await res.json()).data?.presences ?? {}) };
+		const res = await fetch(
+			`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[status][_eq]=accepted&limit=-1&fields=id,presences`,
+			{ headers: getAuthHeaders() }
+		);
+		if (!res.ok) return fail(500, { error: 'Impossible de lire les joueurs.' });
+		const rows: Record<string, any>[] = (await res.json()).data ?? [];
 
-		if (status) presences[date] = status;
-		else delete presences[date];
+		let saved = 0;
+		await Promise.all(
+			rows
+				.filter((r) => wanted.has(String(r.id)) && wanted.get(String(r.id)) !== r.presences?.[date])
+				.map(async (r) => {
+					const presences = { ...(r.presences ?? {}), [date]: wanted.get(String(r.id)) };
+					const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${r.id}`, {
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+						body: JSON.stringify({ presences })
+					});
+					if (patch.ok) saved++;
+				})
+		);
 
-		const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-			body: JSON.stringify({ presences })
-		});
-		if (!patch.ok) {
-			const errorBody = await patch.json().catch(() => null);
-			console.error('Presence update failed:', patch.status, JSON.stringify(errorBody));
-			return fail(500, { error: "La présence n'a pas pu être enregistrée." });
-		}
-		return { success: true };
+		return { success: true, saved };
 	},
 
 	logout: async ({ cookies }) => {
