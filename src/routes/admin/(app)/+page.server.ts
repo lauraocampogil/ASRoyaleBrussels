@@ -7,7 +7,8 @@ import {
 	sendCorrectionEmail,
 	sendRegistrationConfirmationEmail,
 	sendTalentDayReminderEmail,
-	sendMakeupEmails
+	sendMakeupEmails,
+	sendSecondChanceEmail
 } from '$lib/server/email';
 import { cleanInstagram } from '$lib/instagram';
 import type { Actions, PageServerLoad } from './$types';
@@ -144,7 +145,9 @@ export const actions: Actions = {
 		const rawStatus = String(data.get('status') ?? 'pending');
 		// "pending_correction" = remettre en attente ET envoyer l'email « envoyé par erreur »
 		const wantsCorrection = rawStatus === 'pending_correction';
-		const status = wantsCorrection ? 'pending' : rawStatus;
+		// "rejected_second_chance" = refusé, mais avec l'email « seconde chance » (à la place de l'email de refus)
+		const wantsSecondChance = rawStatus === 'rejected_second_chance';
+		const status = wantsCorrection ? 'pending' : wantsSecondChance ? 'rejected' : rawStatus;
 
 		// Statut actuel : on n'envoie un email que si le statut change réellement.
 		const prevRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=status`, {
@@ -171,7 +174,13 @@ export const actions: Actions = {
 
 		let emailFailed = false;
 		try {
-			if (status === 'accepted' && prevStatus !== 'accepted') {
+			if (wantsSecondChance) {
+				await sendSecondChanceEmail({
+					to: player.email,
+					firstName: player.first_name,
+					gender: player.gender
+				});
+			} else if (status === 'accepted' && prevStatus !== 'accepted') {
 				await sendAcceptanceEmail({
 					to: player.email,
 					firstName: player.first_name,

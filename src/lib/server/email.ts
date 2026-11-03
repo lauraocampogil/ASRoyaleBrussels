@@ -350,3 +350,54 @@ export async function sendMakeupEmails(
 		if (error) throw new Error(`${error.name}: ${error.message}`);
 	}
 }
+
+// Seconde chance : pour un joueur refusé, invitation à revenir se montrer ce week-end.
+// (Le email de refus classique reste inchangé : sendRejectionEmail.)
+export async function sendSecondChanceEmail(opts: {
+	to: string;
+	firstName: string;
+	gender?: string | null;
+}) {
+	const g = (opts.gender ?? '').trim();
+	const isFemale = /^(f|fille|femme|female|woman|girl)$/i.test(g);
+	const isMale = /^(m|garcon|garçon|homme|male|man|boy)$/i.test(g);
+	const horaire = isFemale
+		? `<strong>${MAKEUP.girls}</strong>`
+		: isMale
+			? `<strong>${MAKEUP.boys}</strong>`
+			: `<strong>${MAKEUP.girls}</strong> pour les filles, <strong>${MAKEUP.boys}</strong> pour les garçons`;
+
+	const content = `
+		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Bonjour ${opts.firstName},</h2>
+		<p>Merci d'être venu(e) te montrer et pour l'intérêt que tu portes à Brussels Summit Academy.</p>
+		<p>Nous n'avons pas pu donner suite à ta candidature pour le moment, mais <strong>nous voulons te donner une seconde chance</strong> : tu es invité(e) à revenir t'entraîner avec nous ce week-end pour que nous puissions te revoir.</p>
+		<table style="width:100%; border-collapse:collapse; margin:20px 0;">
+			<tr>
+				<td style="padding:4px 0; color:#555; width:90px;">Quand</td>
+				<td style="padding:4px 0; font-weight:600;">${MAKEUP.dates}</td>
+			</tr>
+			<tr>
+				<td style="padding:4px 0; color:#555;">Horaire</td>
+				<td style="padding:4px 0;">${horaire}</td>
+			</tr>
+			<tr>
+				<td style="padding:4px 0; color:#555;">Lieu</td>
+				<td style="padding:4px 0; font-weight:600;">Centre Nelson Mandela<br/>Rue de Ransbeek 227, 1120 Bruxelles</td>
+			</tr>
+		</table>
+		<p style="margin:0 0 8px; font-weight:600;">À apporter :</p>
+		<ul style="margin:0 0 20px; padding-left:20px; color:#333;">
+			<li>Tenue de sport complète + crampons</li>
+			<li>Ta carte d'identité originale</li>
+			<li>Une bouteille d'eau</li>
+		</ul>
+		<p>Pour nous dire quel jour tu viens, ou pour toute question, écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
+		<p style="margin-top:24px;">Nous espérons te revoir très vite,<br/>L'équipe Brussels Summit Academy</p>
+	`;
+	await send({
+		from: env.RESEND_FROM as string,
+		to: opts.to,
+		subject: 'Une seconde chance de te montrer — Brussels Summit Academy',
+		html: wrapEmail(content)
+	});
+}

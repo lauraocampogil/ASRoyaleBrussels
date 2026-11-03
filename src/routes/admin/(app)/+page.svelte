@@ -212,6 +212,11 @@
 		if (next === 'rejected' && player.status !== 'rejected') {
 			return confirm(`Refuser ${name} ?\n\nUn email de refus sera envoyé à ${player.email}.`);
 		}
+		if (next === 'rejected_second_chance') {
+			return confirm(
+				`Refuser ${name} avec une seconde chance ?\n\nUn email l'invitant à revenir ce week-end sera envoyé à ${player.email} (à la place de l'email de refus).`
+			);
+		}
 		if (next === 'pending_correction') {
 			return confirm(
 				`Remettre ${name} en attente ?\n\nUn email « envoyé par erreur » sera envoyé à ${player.email}.`
@@ -341,6 +346,8 @@
 			<option value="rejected">Refusé</option>
 			{#if player.status === 'accepted'}
 				<option value="pending_correction">En attente + email « envoyé par erreur »</option>
+			{:else}
+				<option value="rejected_second_chance">Refusé + email « seconde chance »</option>
 			{/if}
 		</select>
 	</form>
