@@ -34,6 +34,10 @@ export function parseDossier(
 		info_contrat_precision: text(data, 'info_contrat_precision') || null,
 		urgence_nom: text(data, 'urgence_nom'),
 		urgence_tel: text(data, 'urgence_tel'),
+		taille_polo: text(data, 'taille_polo'),
+		taille_veste: text(data, 'taille_veste'),
+		taille_maillot: text(data, 'taille_maillot'),
+		taille_chaussettes: text(data, 'taille_chaussettes'),
 		mineur: isMinor,
 		parent_nom: isMinor ? text(data, 'parent_nom') : null,
 		parent_email: isMinor ? text(data, 'parent_email') : null,
@@ -57,7 +61,11 @@ export function parseDossier(
 		'situation',
 		'info_contrat',
 		'urgence_nom',
-		'urgence_tel'
+		'urgence_tel',
+		'taille_polo',
+		'taille_veste',
+		'taille_maillot',
+		'taille_chaussettes'
 	];
 	if (required.some((k) => !dossier[k])) {
 		return { dossier, error: 'Merci de remplir tous les champs obligatoires.' };

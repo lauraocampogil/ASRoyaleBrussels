@@ -63,6 +63,15 @@ export const DOSSIER_SECTIONS: { title: string; fields: [string, string][] }[] =
 		]
 	},
 	{
+		title: 'Équipement (tailles EU)',
+		fields: [
+			['taille_polo', 'Polo'],
+			['taille_veste', "Veste d'hiver"],
+			['taille_maillot', 'Maillot'],
+			['taille_chaussettes', 'Chaussettes (pointure)']
+		]
+	},
+	{
 		title: 'Mineur(e)',
 		fields: [
 			['parent_nom', 'Parent / responsable légal'],
@@ -72,3 +81,7 @@ export const DOSSIER_SECTIONS: { title: string; fields: [string, string][] }[] =
 		]
 	}
 ];
+
+// Tailles européennes proposées dans le formulaire.
+export const CLOTHING_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+export const SOCK_SIZES = ['35-38', '39-42', '43-46', '47-50'];

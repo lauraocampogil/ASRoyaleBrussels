@@ -63,6 +63,19 @@
 	let presDate = $state(todayIso);
 	let presForm = $state<HTMLFormElement | null>(null);
 	let presMsg = $state('');
+	let presOpen = $state<number | null>(null);
+	const presList = (player: any): [string, string][] =>
+		Object.entries(player.presences ?? {}).sort((x, y) => y[0].localeCompare(x[0])) as [
+			string,
+			string
+		][];
+	const fmtLong = (d: string) =>
+		new Intl.DateTimeFormat('fr-BE', {
+			weekday: 'long',
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric'
+		}).format(new Date(d));
 	const presOf = (player: any, date: string): string => player.presences?.[date] ?? '';
 	const presTotal = (player: any, status: string) =>
 		Object.values(player.presences ?? {}).filter((v) => v === status).length;
@@ -991,12 +1004,19 @@
 					{#key presDate}
 						<ul class="flex flex-col divide-y divide-dark-accent/10">
 							{#each acceptedPlayers as player (player.id)}
-								<li class="flex items-center justify-between gap-3 py-2.5">
+								<li class="flex flex-col py-2.5">
+									<div class="flex items-center justify-between gap-3">
 									<div class="min-w-0">
-										<p class="truncate text-sm font-medium text-dark">
-											{player.first_name}
-											{player.last_name}
-										</p>
+										<button
+												type="button"
+												onclick={() => (presOpen = presOpen === player.id ? null : player.id)}
+												class="flex items-center gap-1 truncate text-left text-sm font-medium text-dark hover:text-primary"
+												title="Voir toutes les dates"
+											>
+												{player.first_name}
+												{player.last_name}
+												<span class="text-xs text-dark-accent">{presOpen === player.id ? '▲' : '▼'}</span>
+											</button>
 										<p class="text-xs text-dark-accent">
 											{presTotal(player, 'present')} présent(s) · {presTotal(player, 'absent')} absent(s)
 										</p>
@@ -1029,6 +1049,33 @@
 											>
 										</label>
 									</div>
+									</div>
+
+									{#if presOpen === player.id}
+										<div class="mt-2 rounded-xl bg-[#f4f5f7] p-3">
+											<p class="mb-2 text-xs font-semibold uppercase text-dark-accent">
+												Historique de {player.first_name} · {presTotal(player, 'present')} venue(s) ·
+												{presTotal(player, 'absent')} absence(s)
+											</p>
+											{#if presList(player).length === 0}
+												<p class="text-sm text-dark-accent">Aucune date enregistrée.</p>
+											{:else}
+												<ul class="flex flex-col gap-1">
+													{#each presList(player) as [date, st] (date)}
+														<li class="flex items-center justify-between rounded-lg bg-white px-3 py-1.5 text-sm">
+															<span class="capitalize text-dark">{fmtLong(date)}</span>
+															<span
+																class="rounded-full px-3 py-0.5 text-xs font-medium {st === 'present'
+																	? 'bg-green-600 text-white'
+																	: 'bg-red-600 text-white'}"
+																>{st === 'present' ? 'Est venu(e)' : 'Absent(e)'}</span
+															>
+														</li>
+													{/each}
+												</ul>
+											{/if}
+										</div>
+									{/if}
 								</li>
 							{/each}
 						</ul>

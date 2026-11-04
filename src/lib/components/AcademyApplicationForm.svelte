@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components';
 	import { toLightJpeg, MIN_DIMENSION } from '$lib/imageUpload';
+	import { CLOTHING_SIZES, SOCK_SIZES } from '$lib/dossier';
 
 	let {
 		form,
@@ -308,6 +309,40 @@
 		<label class="flex flex-col gap-2">
 			<span class="text-dark/70">Téléphone du contact d'urgence *</span>
 			<input type="tel" name="urgence_tel" required value={v.urgence_tel ?? ''} class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none" />
+		</label>
+	</div>
+
+	<h2 class="font-clash mt-4 text-title-md text-primary">Équipement (tailles européennes)</h2>
+	<div class="grid grid-cols-1 gap-y-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-6">
+		{#each [['taille_polo', 'Taille de polo'], ['taille_veste', "Taille de veste d'hiver"], ['taille_maillot', 'Taille de maillot']] as [name, label] (name)}
+			<label class="flex flex-col gap-2">
+				<span class="text-dark/70">{label} *</span>
+				<select
+					{name}
+					required
+					value={v[name] ?? ''}
+					class="rounded-md border border-dark/30 bg-background px-4 py-3 focus:border-primary focus:outline-none"
+				>
+					<option value="" disabled selected>Choisir</option>
+					{#each CLOTHING_SIZES as size (size)}
+						<option value={size}>{size}</option>
+					{/each}
+				</select>
+			</label>
+		{/each}
+		<label class="flex flex-col gap-2">
+			<span class="text-dark/70">Taille de chaussettes (pointure EU) *</span>
+			<select
+				name="taille_chaussettes"
+				required
+				value={v.taille_chaussettes ?? ''}
+				class="rounded-md border border-dark/30 bg-background px-4 py-3 focus:border-primary focus:outline-none"
+			>
+				<option value="" disabled selected>Choisir</option>
+				{#each SOCK_SIZES as size (size)}
+					<option value={size}>{size}</option>
+				{/each}
+			</select>
 		</label>
 	</div>
 
