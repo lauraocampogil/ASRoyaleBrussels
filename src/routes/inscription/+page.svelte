@@ -84,7 +84,7 @@
 
 <Seo
 	title="Inscription"
-	description="Inscris-toi gratuitement au Talent Day ou rejoins Brussels Summit Academy. Inscriptions ouvertes aux 16-28 ans, filles et garçons."
+	description="Inscris-toi au Talent Day ou rejoins Brussels Summit Academy. Inscriptions ouvertes aux 16-28 ans, filles et garçons."
 />
 
 <section
@@ -115,6 +115,7 @@
 			{/if}
 		</div>
 
+		{#if activeTab === 'talent_days' && !acceptedLink}
 		<p
 			class="mb-6 flex items-center gap-2 rounded-lg bg-secondary/15 px-4 py-3 text-sm font-medium text-dark"
 		>
@@ -132,6 +133,7 @@
 			</svg>
 			Les inscriptions sont gratuites.
 		</p>
+		{/if}
 
 		{#if data.talentDayActive && data.academyActive}
 			<div class="mb-10 flex overflow-hidden rounded border border-dark">
