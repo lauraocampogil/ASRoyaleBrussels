@@ -191,20 +191,6 @@ export async function sendAcceptanceEmail(opts: {
 	await send({ from: env.RESEND_FROM as string, to: opts.to, subject, html });
 }
 
-// Renvoi groupé (une seule requête Resend pour jusqu'à 100 emails).
-export async function sendAcceptanceEmails(
-	players: { to: string; firstName: string; gender?: string | null }[]
-): Promise<void> {
-	const emails = players.map((p) => {
-		const { subject, html } = buildAcceptanceEmail(p);
-		return { from: env.RESEND_FROM as string, to: p.to, subject, html };
-	});
-	for (let i = 0; i < emails.length; i += 100) {
-		const { error } = await getResend().batch.send(emails.slice(i, i + 100));
-		if (error) throw new Error(`${error.name}: ${error.message}`);
-	}
-}
-
 export async function sendCorrectionEmail(opts: { to: string; firstName: string }) {
 	const content = `
 		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Bonjour ${opts.firstName},</h2>
