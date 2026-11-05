@@ -391,6 +391,14 @@
 			<input type="checkbox" name="confirm_reglement" required class="mt-1" />
 			<span>J'accepte le règlement et la politique de confidentialité de l'Academy. *</span>
 		</label>
+		<label class="flex items-start gap-3 text-sm text-dark">
+			<input type="checkbox" name="confirm_images" class="mt-1" />
+			<span
+				>J'autorise Brussels Summit Academy à utiliser mes photos, images et vidéos (ou celles de mon
+				enfant, pour les mineur·es) sur son site, ses réseaux sociaux et ses supports de
+				communication. (facultatif)</span
+			>
+		</label>
 	</div>
 
 	{#if form?.error}

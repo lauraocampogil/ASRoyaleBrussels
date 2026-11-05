@@ -59,7 +59,8 @@ export const DOSSIER_SECTIONS: { title: string; fields: [string, string][] }[] =
 			['info_contrat', 'Information utile pour le contrat'],
 			['info_contrat_precision', 'Précision'],
 			['urgence_nom', "Contact d'urgence"],
-			['urgence_tel', "Téléphone d'urgence"]
+			['urgence_tel', "Téléphone d'urgence"],
+			['droit_image', 'Autorisation photos / images / vidéos']
 		]
 	},
 	{

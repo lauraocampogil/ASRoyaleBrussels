@@ -15,6 +15,44 @@ export async function findAcceptedByEmail(email: string) {
 	return data?.find((r: any) => r.email?.trim().toLowerCase() === wanted) ?? null;
 }
 
+// Les champs JSON (dossier, paiements, presences) peuvent avoir été créés comme « Text » dans Directus :
+// on lit les deux formats.
+export function parseJsonField<T = any>(value: unknown): T | null {
+	if (typeof value === 'string') {
+		try {
+			return JSON.parse(value) as T;
+		} catch {
+			return null;
+		}
+	}
+	return (value ?? null) as T | null;
+}
+
+const JSON_FIELDS = ['dossier', 'paiements', 'presences'];
+
+// PATCH d'une inscription. Si Directus refuse (400) parce qu'un champ JSON a été créé en « Text »,
+// on réessaie en envoyant ces champs sous forme de texte JSON. L'erreur est toujours journalisée.
+export async function patchRegistration(id: string | number, body: Record<string, any>) {
+	const url = `${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`;
+	const send = (b: Record<string, any>) =>
+		fetch(url, { method: 'PATCH', headers: headers(), body: JSON.stringify(b) });
+
+	let res = await send(body);
+	if (res.status === 400 && JSON_FIELDS.some((f) => f in body)) {
+		const asText = Object.fromEntries(
+			Object.entries(body).map(([k, v]) => [
+				k,
+				JSON_FIELDS.includes(k) && typeof v === 'object' ? JSON.stringify(v) : v
+			])
+		);
+		res = await send(asText);
+	}
+	if (!res.ok) {
+		console.error('Registration PATCH failed:', res.status, await res.clone().text().catch(() => ''));
+	}
+	return res;
+}
+
 // Ne remplit que les champs encore vides : on n'écrase jamais une donnée existante.
 export async function completeRegistration(
 	existing: Record<string, any>,
@@ -27,10 +65,6 @@ export async function completeRegistration(
 		if (empty && v !== null && v !== undefined && v !== '') patch[k] = v;
 	}
 	if (Object.keys(patch).length === 0) return;
-	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${existing.id}`, {
-		method: 'PATCH',
-		headers: headers(),
-		body: JSON.stringify(patch)
-	});
+	const res = await patchRegistration(existing.id, patch);
 	if (!res.ok) throw new Error(`Directus ${res.status}`);
 }

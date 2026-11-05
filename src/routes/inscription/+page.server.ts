@@ -269,16 +269,23 @@ export const actions: Actions = {
 			return { success: true };
 		}
 
-		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				...values,
-				...(dossier ? { dossier } : {}),
-				id_card_front: idCardFrontId,
-				id_card_back: idCardBackId
-			})
-		});
+		const createBody = {
+			...values,
+			...(dossier ? { dossier } : {}),
+			id_card_front: idCardFrontId,
+			id_card_back: idCardBackId
+		};
+		const postRegistration = (body: Record<string, unknown>) =>
+			fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body)
+			});
+		let res = await postRegistration(createBody);
+		// Champ « dossier » créé en Text dans Directus : on réessaie avec du texte JSON.
+		if (res.status === 400 && dossier) {
+			res = await postRegistration({ ...createBody, dossier: JSON.stringify(dossier) });
+		}
 
 		if (!res.ok) {
 			const errorBody = await res.json().catch(() => null);

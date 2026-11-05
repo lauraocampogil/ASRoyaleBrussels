@@ -38,6 +38,7 @@ export function parseDossier(
 		taille_veste: text(data, 'taille_veste'),
 		taille_maillot: text(data, 'taille_maillot'),
 		taille_chaussettes: text(data, 'taille_chaussettes'),
+		droit_image: checked(data, 'confirm_images'),
 		mineur: isMinor,
 		parent_nom: isMinor ? text(data, 'parent_nom') : null,
 		parent_email: isMinor ? text(data, 'parent_email') : null,

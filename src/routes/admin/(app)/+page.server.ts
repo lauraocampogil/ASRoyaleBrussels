@@ -11,6 +11,7 @@ import {
 	sendSecondChanceEmail
 } from '$lib/server/email';
 import { cleanInstagram } from '$lib/instagram';
+import { parseJsonField, patchRegistration } from '$lib/server/registrations';
 import type { Actions, PageServerLoad } from './$types';
 
 async function uploadFile(file: File, fetchFn: typeof fetch): Promise<string> {
@@ -117,6 +118,9 @@ export const load: PageServerLoad = async ({ fetch }) => {
 		const siteProfile = profileByName.get(nameKey(`${r.first_name} ${r.last_name}`)) ?? null;
 		return {
 			...r,
+			dossier: parseJsonField(r.dossier),
+			paiements: parseJsonField(r.paiements) ?? [],
+			presences: parseJsonField(r.presences) ?? {},
 			missing,
 			complete: missing.length === 0,
 			status: r.status ?? 'pending',
@@ -394,7 +398,8 @@ export const actions: Actions = {
 			rows
 				.filter((r) => ids.includes(String(r.id)))
 				.map(async (r) => {
-					const list: Record<string, unknown>[] = Array.isArray(r.paiements) ? r.paiements : [];
+					const parsed = parseJsonField(r.paiements);
+					const list: Record<string, unknown>[] = Array.isArray(parsed) ? parsed : [];
 					const already = list.some(
 						(e) => e.type === type && (type === 'annuel' || e.mois === mois)
 					);
@@ -412,11 +417,7 @@ export const actions: Actions = {
 						date,
 						montant
 					});
-					const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${r.id}`, {
-						method: 'PATCH',
-						headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-						body: JSON.stringify({ paiements: list })
-					});
+					const patch = await patchRegistration(r.id, { paiements: list });
 					if (patch.ok) saved++;
 				})
 		);
@@ -433,14 +434,12 @@ export const actions: Actions = {
 			headers: getAuthHeaders()
 		});
 		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
-		const list: Record<string, unknown>[] = (await res.json()).data?.paiements ?? [];
-		const next = Array.isArray(list) ? list.filter((e) => e.id !== entry) : [];
+		const parsedList = parseJsonField((await res.json()).data?.paiements);
+		const next = Array.isArray(parsedList)
+			? (parsedList as Record<string, unknown>[]).filter((e) => e.id !== entry)
+			: [];
 
-		const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-			body: JSON.stringify({ paiements: next })
-		});
+		const patch = await patchRegistration(id as string, { paiements: next });
 		if (!patch.ok) return fail(500, { error: "La suppression a échoué." });
 		return { success: true };
 	},
@@ -508,14 +507,17 @@ export const actions: Actions = {
 		let saved = 0;
 		await Promise.all(
 			rows
-				.filter((r) => wanted.has(String(r.id)) && wanted.get(String(r.id)) !== r.presences?.[date])
+				.filter(
+					(r) =>
+						wanted.has(String(r.id)) &&
+						wanted.get(String(r.id)) !== parseJsonField<Record<string, string>>(r.presences)?.[date]
+				)
 				.map(async (r) => {
-					const presences = { ...(r.presences ?? {}), [date]: wanted.get(String(r.id)) };
-					const patch = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${r.id}`, {
-						method: 'PATCH',
-						headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-						body: JSON.stringify({ presences })
-					});
+					const presences = {
+						...(parseJsonField<Record<string, string>>(r.presences) ?? {}),
+						[date]: wanted.get(String(r.id))
+					};
+					const patch = await patchRegistration(r.id, { presences });
 					if (patch.ok) saved++;
 				})
 		);
