@@ -50,6 +50,8 @@
 	}
 	let presenceFilter = $state<'all' | 'venu' | 'pas_venu' | 'inconnu'>('all');
 	let makeupResult = $state('');
+	let resendAllResult = $state('');
+	let resendAllSending = $state(false);
 	let makeupSending = $state(false);
 	let tdAll = $derived(data.players.filter((p: any) => p.type === 'talent_days'));
 	let presentCount = $derived(tdAll.filter((p: any) => p.venue === true).length);
@@ -1425,6 +1427,42 @@
 				</div>
 
 				<div class="flex items-center gap-2 print:hidden">
+						{#if viewMode === 'inscrits'}
+							<form
+								method="POST"
+								action="?/resendAcceptanceAll"
+								use:enhance={({ cancel }) => {
+									if (
+										!confirm(
+											`Renvoyer l'email d'acceptation à tous les joueurs acceptés (${acceptedPlayers.length}) ?`
+										)
+									) {
+										cancel();
+										return;
+									}
+									resendAllSending = true;
+									resendAllResult = '';
+									return async ({ result, update }) => {
+										resendAllSending = false;
+										resendAllResult =
+											result.type === 'success'
+												? `✓ Envoyé à ${(result.data as any)?.resent ?? ''} joueur(s)`
+												: String((result as any).data?.error ?? 'Erreur');
+										await update({ reset: false });
+									};
+								}}
+								class="flex items-center gap-2"
+							>
+								<button
+									type="submit"
+									disabled={resendAllSending || acceptedPlayers.length === 0}
+									class="rounded-xl bg-secondary px-4 py-2 text-sm font-medium text-dark transition-opacity hover:opacity-90 disabled:opacity-40"
+								>
+									{resendAllSending ? 'Envoi...' : `Renvoyer l'email d'acceptation (${acceptedPlayers.length})`}
+								</button>
+								{#if resendAllResult}<span class="text-xs text-dark-accent">{resendAllResult}</span>{/if}
+							</form>
+						{/if}
 					{#if viewMode === 'talent_days'}
 							<form
 								method="POST"

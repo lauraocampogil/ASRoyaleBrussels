@@ -8,7 +8,8 @@ import {
 	sendRegistrationConfirmationEmail,
 	sendTalentDayReminderEmail,
 	sendMakeupEmails,
-	sendSecondChanceEmail
+	sendSecondChanceEmail,
+	sendAcceptanceEmails
 } from '$lib/server/email';
 import { cleanInstagram } from '$lib/instagram';
 import { parseJsonField, patchRegistration } from '$lib/server/registrations';
@@ -523,6 +524,30 @@ export const actions: Actions = {
 		);
 
 		return { success: true, saved };
+	},
+
+	// Renvoie l'email d'acceptation (nouvelle version) à tous les joueurs acceptés.
+	resendAcceptanceAll: async ({ fetch }) => {
+		const res = await fetch(
+			`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[status][_eq]=accepted&limit=-1&fields=id,email,first_name,gender`,
+			{ headers: getAuthHeaders() }
+		);
+		if (!res.ok) return fail(500, { error: 'Impossible de lire les joueurs acceptés.' });
+		const rows: Record<string, any>[] = (await res.json()).data ?? [];
+		const targets = rows.filter((r) => r.email);
+		if (targets.length === 0) return fail(400, { error: 'Aucun joueur accepté.' });
+
+		try {
+			await sendAcceptanceEmails(
+				targets.map((r) => ({ to: r.email, firstName: r.first_name, gender: r.gender }))
+			);
+		} catch (err) {
+			console.error('Acceptance resend failed:', err);
+			return fail(502, {
+				error: `Emails non envoyés : ${err instanceof Error ? err.message : String(err)}`
+			});
+		}
+		return { success: true, resent: targets.length };
 	},
 
 	logout: async ({ cookies }) => {

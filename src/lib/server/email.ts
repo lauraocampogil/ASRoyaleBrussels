@@ -109,7 +109,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 	});
 }
 
-export async function sendAcceptanceEmail(opts: {
+function buildAcceptanceEmail(opts: {
 	to: string;
 	firstName: string;
 	gender?: string | null;
@@ -179,12 +179,30 @@ export async function sendAcceptanceEmail(opts: {
 		<p>Une question ? Écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
 		<p style="margin-top:24px;">À très vite sur le terrain,<br/>L'équipe Brussels Summit Academy</p>
 	`;
-	await send({
-		from: env.RESEND_FROM as string,
-		to: opts.to,
-		subject: "Bienvenue chez Brussels Summit Academy : ta candidature est acceptée !",
-		html: wrapEmail(content)
+	return { subject: "Bienvenue chez Brussels Summit Academy : ta candidature est acceptée !", html: wrapEmail(content) };
+}
+
+export async function sendAcceptanceEmail(opts: {
+	to: string;
+	firstName: string;
+	gender?: string | null;
+}) {
+	const { subject, html } = buildAcceptanceEmail(opts);
+	await send({ from: env.RESEND_FROM as string, to: opts.to, subject, html });
+}
+
+// Renvoi groupé (une seule requête Resend pour jusqu'à 100 emails).
+export async function sendAcceptanceEmails(
+	players: { to: string; firstName: string; gender?: string | null }[]
+): Promise<void> {
+	const emails = players.map((p) => {
+		const { subject, html } = buildAcceptanceEmail(p);
+		return { from: env.RESEND_FROM as string, to: p.to, subject, html };
 	});
+	for (let i = 0; i < emails.length; i += 100) {
+		const { error } = await getResend().batch.send(emails.slice(i, i + 100));
+		if (error) throw new Error(`${error.name}: ${error.message}`);
+	}
 }
 
 export async function sendCorrectionEmail(opts: { to: string; firstName: string }) {
