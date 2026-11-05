@@ -15,6 +15,32 @@
 	let idBackPreview = $state<string | null>(null);
 	let idFrontError = $state('');
 	let idBackError = $state('');
+	let photoPreview = $state<string | null>(null);
+	let photoError = $state('');
+
+	async function handlePhotoChange(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const original = input.files?.[0];
+		if (!original) return;
+		photoError = '';
+
+		converting = true;
+		const file = await toLightJpeg(original);
+		if (file !== original) {
+			const dt = new DataTransfer();
+			dt.items.add(file);
+			input.files = dt.files;
+		}
+		converting = false;
+
+		if (!file.type.startsWith('image/') || /heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)) {
+			input.value = '';
+			photoPreview = null;
+			photoError = 'Cette photo ne peut pas être lue. Envoie-la en JPG ou PNG (ou fais une capture d\'écran).';
+			return;
+		}
+		photoPreview = URL.createObjectURL(file);
+	}
 
 	async function handleIdCardChange(e: Event, side: 'front' | 'back') {
 		const input = e.currentTarget as HTMLInputElement;
@@ -264,6 +290,25 @@
 			<input type="text" name="selection_categorie" value={v.selection_categorie ?? ''} class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none" />
 		</label>
 		{/if}
+		<div class="sm:col-span-2">
+			<label class="mb-1 block text-dark/70" for="photo_club">Photo de toi avec le maillot de ton club actuel *</label>
+			<input
+				type="file"
+				id="photo_club"
+				name="photo_club"
+				accept="image/*,.heic,.heif"
+				required
+				onchange={handlePhotoChange}
+				class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
+			/>
+			<p class="mt-1 text-xs text-dark-accent">
+				Une photo où l'on te voit bien, avec la tenue de ton club. Si tu n'as pas de club, envoie une photo de toi en tenue de sport.
+			</p>
+			{#if photoPreview}
+				<img src={photoPreview} alt="Aperçu de ta photo" class="mt-2 h-40 w-auto rounded border border-dark-accent/20 object-contain" />
+			{/if}
+			{#if photoError}<p class="mt-1 text-xs text-red-600">{photoError}</p>{/if}
+		</div>
 		<label class="flex flex-col gap-2 sm:col-span-2">
 			<span class="text-dark/70">Lien vers une vidéo de match ou de présentation (facultatif)</span>
 			<input type="url" name="video_url" value={v.video_url ?? ''} placeholder="https://" class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none" />

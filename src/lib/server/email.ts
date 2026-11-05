@@ -424,3 +424,91 @@ export async function sendSecondChanceEmail(opts: {
 		html: wrapEmail(content)
 	});
 }
+
+// ---- Email d'information aux joueurs acceptés : entraînement du dimanche, cash, formulaire ----
+// (L'email d'acceptation lui-même reste inchangé.)
+function buildAcceptedInfoEmail(opts: {
+	firstName: string;
+	gender?: string | null;
+	formDone: boolean;
+}) {
+	const g = (opts.gender ?? '').trim();
+	const isFemale = /^(f|fille|femme|female|woman|girl)$/i.test(g);
+	const isMale = /^(m|garcon|garçon|homme|male|man|boy)$/i.test(g);
+	const monthly = isFemale ? '50' : isMale ? '80' : null;
+	const horaire = isFemale
+		? `<strong>${MAKEUP.girls}</strong>`
+		: isMale
+			? `<strong>${MAKEUP.boys}</strong>`
+			: `<strong>${MAKEUP.girls}</strong> pour les filles, <strong>${MAKEUP.boys}</strong> pour les garçons`;
+	const link = `${SITE_URL}/inscription?type=academie&acces=accepte`;
+
+	const formBlock = opts.formDone
+		? `<p style="margin:24px 0; padding:12px 16px; background:#e8f7ec; border-radius:12px;">✅ Merci, nous avons bien reçu ton formulaire.</p>`
+		: `<div style="margin:24px 0; padding:16px; background:#fff4e5; border:1px solid #f4b400; border-radius:12px;">
+			<p style="margin:0 0 8px; font-weight:700; color:#1a1a1a;">⚠️ N'oublie pas de remplir le formulaire !</p>
+			<p style="margin:0 0 12px;">C'est obligatoire : <strong>sans le formulaire complété, tu ne rejoins pas l'équipe.</strong> Il prend environ 10 minutes. Si tu es mineur·e, l'accord d'un parent ou responsable légal est nécessaire.</p>
+			<a href="${link}" style="display:inline-block; background:#1807b9; color:#ffffff; padding:12px 24px; border-radius:999px; text-decoration:none; font-weight:600;">Remplir le formulaire</a>
+		</div>`;
+
+	const content = `
+		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Salut ${opts.firstName},</h2>
+		<p>Petit message important pour ce week-end.</p>
+
+		<p style="margin:24px 0 8px; font-weight:600;">Entraînement uniquement le dimanche 8 novembre</p>
+		<p style="margin:0 0 8px;">Cette semaine, il n'y a entraînement que le <strong>dimanche</strong> (pas de séance le samedi).</p>
+		<table style="width:100%; border-collapse:collapse; margin:0 0 20px;">
+			<tr>
+				<td style="padding:4px 0; color:#555; width:90px;">Horaire</td>
+				<td style="padding:4px 0;">${horaire}</td>
+			</tr>
+			<tr>
+				<td style="padding:4px 0; color:#555;">Lieu</td>
+				<td style="padding:4px 0; font-weight:600;">Centre Nelson Mandela<br/>Rue de Ransbeek 227, 1120 Bruxelles</td>
+			</tr>
+		</table>
+
+		<p style="margin:0 0 8px; font-weight:600;">À apporter :</p>
+		<ul style="margin:0 0 20px; padding-left:20px; color:#333;">
+			<li>Ta tenue de sport complète et tes crampons</li>
+			<li>Ta carte d'identité originale</li>
+			<li>Une bouteille d'eau</li>
+			<li><strong>L'argent de ta cotisation en cash (espèces)</strong></li>
+		</ul>
+
+		<p style="margin:24px 0 8px; font-weight:600;">Cotisations (à régler en espèces) :</p>
+		<table style="width:100%; border-collapse:collapse; margin-bottom:8px; font-size:15px; border-top:1px solid #e5e5ef; border-bottom:1px solid #e5e5ef;">
+			<tr>
+				<td style="padding:6px 0; color:#555;">Cotisation annuelle</td>
+				<td style="padding:6px 0; font-weight:600; text-align:right;">150 € <span style="font-weight:400; color:#555;">(une fois par an)</span></td>
+			</tr>
+			<tr>
+				<td style="padding:6px 0; color:#555;">Cotisation mensuelle</td>
+				<td style="padding:6px 0; font-weight:600; text-align:right;">${monthly ? `${monthly} €` : '80 € (garçons) · 50 € (filles)'}</td>
+			</tr>
+		</table>
+
+		${formBlock}
+
+		<p>Une question ? Écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
+		<p style="margin-top:24px;">À dimanche sur le terrain,<br/>L'équipe Brussels Summit Academy</p>
+	`;
+	return {
+		subject: 'Dimanche 8 novembre : entraînement, cotisation et formulaire',
+		html: wrapEmail(content)
+	};
+}
+
+export async function sendAcceptedInfoEmails(
+	players: { to: string; firstName: string; gender?: string | null; formDone: boolean }[]
+): Promise<void> {
+	const emails = players.map((p) => {
+		const { subject, html } = buildAcceptedInfoEmail(p);
+		return { from: env.RESEND_FROM as string, to: p.to, subject, html };
+	});
+	// L'API « batch » de Resend envoie jusqu'à 100 emails en une seule requête.
+	for (let i = 0; i < emails.length; i += 100) {
+		const { error } = await getResend().batch.send(emails.slice(i, i + 100));
+		if (error) throw new Error(`${error.name}: ${error.message}`);
+	}
+}

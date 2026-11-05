@@ -40,6 +40,7 @@ export const DOSSIER_SECTIONS: { title: string; fields: [string, string][] }[] =
 			['selection_nationale', 'Sélection nationale'],
 			['selection_annee', 'Année de sélection'],
 			['selection_categorie', 'Catégorie'],
+			['photo_club', 'Photo avec son club actuel'],
 			['video', 'Vidéo']
 		]
 	},

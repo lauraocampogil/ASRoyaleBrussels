@@ -50,6 +50,8 @@
 	}
 	let presenceFilter = $state<'all' | 'venu' | 'pas_venu' | 'inconnu'>('all');
 	let makeupResult = $state('');
+	let infoResult = $state('');
+	let infoSending = $state(false);
 	let makeupSending = $state(false);
 	let tdAll = $derived(data.players.filter((p: any) => p.type === 'talent_days'));
 	let presentCount = $derived(tdAll.filter((p: any) => p.venue === true).length);
@@ -513,7 +515,23 @@
 										{#each rows as [k, label] (k)}
 											<div>
 												<dt class="text-xs text-dark-accent">{label}</dt>
-												<dd class="whitespace-pre-line text-dark">{fmtDossier(k, player.dossier[k])}</dd>
+												<dd class="whitespace-pre-line text-dark">
+													{#if k === 'photo_club'}
+														<a
+															href={`/admin/id-card/${player.dossier[k]}`}
+															target="_blank"
+															class="inline-block"
+														>
+															<img
+																src={`/admin/id-card/${player.dossier[k]}`}
+																alt="Photo avec son club"
+																class="h-28 w-auto rounded-lg border border-dark-accent/20 object-cover"
+															/>
+														</a>
+													{:else}
+														{fmtDossier(k, player.dossier[k])}
+													{/if}
+												</dd>
 											</div>
 										{/each}
 									</dl>
@@ -1425,6 +1443,42 @@
 				</div>
 
 				<div class="flex items-center gap-2 print:hidden">
+						{#if viewMode === 'inscrits'}
+							<form
+								method="POST"
+								action="?/sendAcceptedInfo"
+								use:enhance={({ cancel }) => {
+									if (
+										!confirm(
+											`Envoyer l'email « entraînement dimanche + cash + formulaire » à ${acceptedPlayers.length} joueur(s) accepté(s) ?`
+										)
+									) {
+										cancel();
+										return;
+									}
+									infoSending = true;
+									infoResult = '';
+									return async ({ result, update }) => {
+										infoSending = false;
+										infoResult =
+											result.type === 'success'
+												? `✓ Envoyé à ${(result.data as any)?.sent ?? ''} joueur(s)`
+												: String((result as any).data?.error ?? 'Erreur');
+										await update({ reset: false });
+									};
+								}}
+								class="flex items-center gap-2"
+							>
+								<button
+									type="submit"
+									disabled={infoSending || acceptedPlayers.length === 0}
+									class="rounded-xl bg-secondary px-4 py-2 text-sm font-medium text-dark transition-opacity hover:opacity-90 disabled:opacity-40"
+								>
+									{infoSending ? 'Envoi...' : `Envoyer l'info dimanche (${acceptedPlayers.length})`}
+								</button>
+								{#if infoResult}<span class="text-xs text-dark-accent">{infoResult}</span>{/if}
+							</form>
+						{/if}
 					{#if viewMode === 'talent_days'}
 							<form
 								method="POST"

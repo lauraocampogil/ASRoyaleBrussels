@@ -8,7 +8,8 @@ import {
 	sendRegistrationConfirmationEmail,
 	sendTalentDayReminderEmail,
 	sendMakeupEmails,
-	sendSecondChanceEmail
+	sendSecondChanceEmail,
+	sendAcceptedInfoEmails
 } from '$lib/server/email';
 import { cleanInstagram } from '$lib/instagram';
 import { parseJsonField, patchRegistration } from '$lib/server/registrations';
@@ -523,6 +524,35 @@ export const actions: Actions = {
 		);
 
 		return { success: true, saved };
+	},
+
+	// Envoie à tous les joueurs acceptés l'email d'information (entraînement du dimanche, cash, formulaire).
+	sendAcceptedInfo: async ({ fetch }) => {
+		const res = await fetch(
+			`${PUBLIC_DIRECTUS_URL}/items/Registration?filter[status][_eq]=accepted&limit=-1&fields=id,email,first_name,gender,dossier`,
+			{ headers: getAuthHeaders() }
+		);
+		if (!res.ok) return fail(500, { error: 'Impossible de lire les joueurs acceptés.' });
+		const rows: Record<string, any>[] = (await res.json()).data ?? [];
+		const targets = rows.filter((r) => r.email);
+		if (targets.length === 0) return fail(400, { error: 'Aucun joueur accepté.' });
+
+		try {
+			await sendAcceptedInfoEmails(
+				targets.map((r) => ({
+					to: r.email,
+					firstName: r.first_name,
+					gender: r.gender,
+					formDone: !!parseJsonField(r.dossier)
+				}))
+			);
+		} catch (err) {
+			console.error('Accepted info emails failed:', err);
+			return fail(502, {
+				error: `Emails non envoyés : ${err instanceof Error ? err.message : String(err)}`
+			});
+		}
+		return { success: true, sent: targets.length };
 	},
 
 	logout: async ({ cookies }) => {

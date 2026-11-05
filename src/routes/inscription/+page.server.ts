@@ -218,6 +218,20 @@ export const actions: Actions = {
 			const parsed = parseDossier(data, age < 18);
 			if (parsed.error) return fail(400, { error: parsed.error, values });
 			dossier = parsed.dossier;
+
+			// Photo avec le club actuel (obligatoire)
+			const photo = data.get('photo_club');
+			if (!(photo instanceof File) || photo.size === 0 || !photo.type.startsWith('image/')) {
+				return fail(400, {
+					error: 'Ajoute une photo de toi avec ton club actuel (JPG ou PNG).',
+					values
+				});
+			}
+			try {
+				dossier.photo_club = await uploadFile(photo, fetch);
+			} catch {
+				return fail(500, { error: "L'envoi de la photo a échoué, réessaie.", values });
+			}
 		}
 
 		// Carte d'identité : demandée sauf si le joueur accepté l'a déjà fournie au Talent Day
