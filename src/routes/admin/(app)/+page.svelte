@@ -491,8 +491,16 @@
 	{#if viewMode !== 'talent_days' && player.dossier}
 		<div class="mt-3 flex flex-col gap-3 print:hidden">
 			{#if player.dossier}
-				<details class="rounded-xl border border-dark-accent/10 bg-white p-3">
-					<summary class="cursor-pointer text-sm font-semibold text-dark">Dossier de candidature</summary>
+				<details
+					open={viewMode === 'inscrits'}
+					class="rounded-xl border border-dark-accent/10 bg-white p-3"
+				>
+					<summary class="cursor-pointer text-sm font-semibold text-dark"
+						>Dossier de candidature</summary
+					>
+					<div class="mt-3 flex items-center gap-2 text-xs text-dark-accent">
+						Carte d'identité : {@render idCardButtons(player)}
+					</div>
 					<div class="mt-3 flex flex-col gap-4">
 						{#each DOSSIER_SECTIONS as section (section.title)}
 							{@const rows = section.fields.filter(

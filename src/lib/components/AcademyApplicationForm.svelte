@@ -5,11 +5,9 @@
 	import { CLOTHING_SIZES, SOCK_SIZES } from '$lib/dossier';
 
 	let {
-		form,
-		idOptional = false
+		form
 	}: {
 		form: { error?: string; values?: Record<string, any> } | null | undefined;
-		idOptional?: boolean;
 	} = $props();
 
 	let converting = $state(false);
@@ -31,6 +29,15 @@
 			input.files = dt.files;
 		}
 		converting = false;
+
+		const setError0 = (v: string) => (side === 'front' ? (idFrontError = v) : (idBackError = v));
+		if (/heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)) {
+			input.value = '';
+			setError0(
+				"Cette photo (format HEIC) ne peut pas être lue. Fais une capture d'écran de ta carte ou envoie-la en JPG/PNG."
+			);
+			return;
+		}
 
 		const setPreview = (v: string | null) =>
 			side === 'front' ? (idFrontPreview = v) : (idBackPreview = v);
@@ -151,10 +158,10 @@
 	</div>
 
 	<div>
-		<label class="mb-1 block text-dark/70" for="id_card_front">Carte d'identité — Recto{idOptional ? '' : ' *'}</label>
-		<input type="file" id="id_card_front" name="id_card_front" accept="image/*,.pdf,.heic,.heif" required={!idOptional} onchange={(e) => handleIdCardChange(e, 'front')} class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none" />
+		<label class="mb-1 block text-dark/70" for="id_card_front">Carte d'identité — Recto *</label>
+		<input type="file" id="id_card_front" name="id_card_front" accept="image/*,.pdf,.heic,.heif" required onchange={(e) => handleIdCardChange(e, 'front')} class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none" />
 		<p class="mt-1 text-xs text-dark-accent">
-			{idOptional ? "Déjà reçue lors du Talent Day : ne la renvoie que si on te l'a demandé." : 'Photo ou scan net et lisible, obligatoire pour ton inscription.'}
+			Photo ou scan net et lisible, obligatoire (même si tu nous l'as déjà envoyée).
 		</p>
 		{#if idFrontPreview}
 			<img src={idFrontPreview} alt="Aperçu recto" class="mt-2 h-32 w-auto rounded border border-dark-accent/20 object-contain" />
@@ -162,8 +169,8 @@
 		{#if idFrontError}<p class="mt-1 text-xs text-red-600">{idFrontError}</p>{/if}
 	</div>
 	<div>
-		<label class="mb-1 block text-dark/70" for="id_card_back">Carte d'identité — Verso{idOptional ? '' : ' *'}</label>
-		<input type="file" id="id_card_back" name="id_card_back" accept="image/*,.pdf,.heic,.heif" required={!idOptional} onchange={(e) => handleIdCardChange(e, 'back')} class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none" />
+		<label class="mb-1 block text-dark/70" for="id_card_back">Carte d'identité — Verso *</label>
+		<input type="file" id="id_card_back" name="id_card_back" accept="image/*,.pdf,.heic,.heif" required onchange={(e) => handleIdCardChange(e, 'back')} class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none" />
 		{#if idBackPreview}
 			<img src={idBackPreview} alt="Aperçu verso" class="mt-2 h-32 w-auto rounded border border-dark-accent/20 object-contain" />
 		{/if}

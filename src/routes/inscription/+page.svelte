@@ -204,7 +204,7 @@
 				Les inscriptions sont fermées pour le moment. Reviens bientôt !
 			</p>
 			{:else if acceptedLink}
-				<AcademyApplicationForm {form} idOptional={true} />
+				<AcademyApplicationForm {form} />
 		{:else}
 			<form
 				method="POST"

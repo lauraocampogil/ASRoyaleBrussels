@@ -21,6 +21,7 @@ export const GET: RequestHandler = async ({ params, cookies, fetch }) => {
 	return new Response(res.body, {
 		headers: {
 			'Content-Type': res.headers.get('Content-Type') ?? 'application/octet-stream',
+			'Content-Disposition': 'inline',
 			'Cache-Control': 'private, max-age=0, no-store'
 		}
 	});

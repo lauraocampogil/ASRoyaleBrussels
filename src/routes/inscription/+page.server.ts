@@ -214,7 +214,8 @@ export const actions: Actions = {
 		let idCardFrontId: string | null = null;
 		let idCardBackId: string | null = null;
 
-		const needsIds = !(existing?.id_card_front && existing?.id_card_back);
+		// Le grand formulaire redemande toujours la carte d'identité (obligatoire, elle remplace l'ancienne).
+		const needsIds = isDossier || !(existing?.id_card_front && existing?.id_card_back);
 		if (needsIds) {
 			const idFront = data.get('id_card_front');
 			const idBack = data.get('id_card_back');
@@ -255,15 +256,23 @@ export const actions: Actions = {
 
 		if (existing) {
 			try {
-				await completeRegistration(existing, {
-					...values,
-					...(dossier ? { dossier } : {}),
-					id_card_front: idCardFrontId,
-					id_card_back: idCardBackId
-				});
+				await completeRegistration(
+					existing,
+					{
+						...values,
+						...(dossier ? { dossier } : {}),
+						id_card_front: idCardFrontId,
+						id_card_back: idCardBackId
+					},
+					['id_card_front', 'id_card_back']
+				);
 			} catch (err) {
 				console.error('Registration completion failed:', err);
-				return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
+				const code = (err instanceof Error ? err.message : '').match(/Directus (\d+)/)?.[1];
+				return fail(500, {
+					error: `Une erreur est survenue, réessaie plus tard.${code ? ` (code ${code})` : ''}`,
+					values
+				});
 			}
 			await notifyStaff('completee');
 			return { success: true };
@@ -290,7 +299,10 @@ export const actions: Actions = {
 		if (!res.ok) {
 			const errorBody = await res.json().catch(() => null);
 			console.error('Directus Registration insert failed:', res.status, JSON.stringify(errorBody));
-			return fail(500, { error: 'Une erreur est survenue, réessaie plus tard.', values });
+			return fail(500, {
+				error: `Une erreur est survenue, réessaie plus tard. (code ${res.status})`,
+				values
+			});
 		}
 
 		// Email de confirmation : envoyé en arrière-plan pour que le joueur n'attende pas.

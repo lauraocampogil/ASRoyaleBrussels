@@ -56,15 +56,21 @@ export async function patchRegistration(id: string | number, body: Record<string
 // Ne remplit que les champs encore vides : on n'écrase jamais une donnée existante.
 export async function completeRegistration(
 	existing: Record<string, any>,
-	payload: Record<string, any>
+	payload: Record<string, any>,
+	overwrite: string[] = []
 ) {
 	const patch: Record<string, any> = {};
 	for (const [k, v] of Object.entries(payload)) {
 		if (['id', 'status', 'type', 'email'].includes(k)) continue;
+		if (v === null || v === undefined || v === '') continue;
 		const empty = existing[k] === null || existing[k] === undefined || existing[k] === '';
-		if (empty && v !== null && v !== undefined && v !== '') patch[k] = v;
+		// Les champs listés dans « overwrite » (ex. nouvelle carte d'identité) remplacent l'ancienne valeur.
+		if (empty || overwrite.includes(k)) patch[k] = v;
 	}
 	if (Object.keys(patch).length === 0) return;
 	const res = await patchRegistration(existing.id, patch);
-	if (!res.ok) throw new Error(`Directus ${res.status}`);
+	if (!res.ok) {
+		const detail = (await res.clone().text().catch(() => '')).slice(0, 300);
+		throw new Error(`Directus ${res.status} ${detail}`);
+	}
 }
