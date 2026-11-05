@@ -9,6 +9,16 @@ import { isPast } from '$lib/server/talentDay';
 import { parseDossier, type Dossier } from '$lib/server/dossier';
 import { findAcceptedByEmail, completeRegistration } from '$lib/server/registrations';
 
+// Extrait le message d'erreur renvoyé par Directus (pour le diagnostic).
+function directusReason(text: string): string {
+	try {
+		return JSON.parse(text)?.errors?.[0]?.message ?? '';
+	} catch {
+		const m = text.match(/\{.*\}/s);
+		return m ? '' : text.slice(0, 160);
+	}
+}
+
 export const load: PageServerLoad = async ({ fetch }) => {
 	const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
 	const { data } = await res.json();
@@ -268,9 +278,11 @@ export const actions: Actions = {
 				);
 			} catch (err) {
 				console.error('Registration completion failed:', err);
-				const code = (err instanceof Error ? err.message : '').match(/Directus (\d+)/)?.[1];
+				const raw = err instanceof Error ? err.message : '';
+				const code = raw.match(/Directus (\d+)/)?.[1];
+				const reason = directusReason(raw.replace(/^Directus \d+ /, ''));
 				return fail(500, {
-					error: `Une erreur est survenue, réessaie plus tard.${code ? ` (code ${code})` : ''}`,
+					error: `Une erreur est survenue, réessaie plus tard.${code ? ` (code ${code}${reason ? ` — ${reason}` : ''})` : ''}`,
 					values
 				});
 			}
@@ -299,8 +311,9 @@ export const actions: Actions = {
 		if (!res.ok) {
 			const errorBody = await res.json().catch(() => null);
 			console.error('Directus Registration insert failed:', res.status, JSON.stringify(errorBody));
+			const reason = errorBody?.errors?.[0]?.message;
 			return fail(500, {
-				error: `Une erreur est survenue, réessaie plus tard. (code ${res.status})`,
+				error: `Une erreur est survenue, réessaie plus tard. (code ${res.status}${reason ? ` — ${reason}` : ''})`,
 				values
 			});
 		}
