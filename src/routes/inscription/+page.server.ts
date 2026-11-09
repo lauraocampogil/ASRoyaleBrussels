@@ -288,7 +288,7 @@ export const actions: Actions = {
 						id_card_front: idCardFrontId,
 						id_card_back: idCardBackId
 					},
-					['id_card_front', 'id_card_back']
+					['id_card_front', 'id_card_back', 'dossier']
 				);
 			} catch (err) {
 				console.error('Registration completion failed:', err);

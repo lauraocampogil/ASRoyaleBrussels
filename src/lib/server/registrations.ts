@@ -63,7 +63,15 @@ export async function completeRegistration(
 	for (const [k, v] of Object.entries(payload)) {
 		if (['id', 'status', 'type', 'email'].includes(k)) continue;
 		if (v === null || v === undefined || v === '') continue;
-		const empty = existing[k] === null || existing[k] === undefined || existing[k] === '';
+		const cur = existing[k];
+		// « Vide » : null, texte vide, objet ou liste vides (ex. valeur par défaut `{}` d'un champ JSON).
+		const empty =
+			cur === null ||
+			cur === undefined ||
+			cur === '' ||
+			(Array.isArray(cur) && cur.length === 0) ||
+			(typeof cur === 'object' && Object.keys(cur).length === 0) ||
+			(typeof cur === 'string' && ['{}', '[]', 'null'].includes(cur.trim()));
 		// Les champs listés dans « overwrite » (ex. nouvelle carte d'identité) remplacent l'ancienne valeur.
 		if (empty || overwrite.includes(k)) patch[k] = v;
 	}
