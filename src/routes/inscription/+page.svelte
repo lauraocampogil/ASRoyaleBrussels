@@ -153,7 +153,7 @@
 						? 'bg-primary text-white'
 						: 'bg-background text-dark'}"
 				>
-					Rejoindre l'académie
+					Faire un essai
 				</button>
 			</div>
 
@@ -191,11 +191,13 @@
 		{#if form?.success}
 			<div class="rounded border border-primary bg-primary/5 p-6 text-center">
 				<p class="font-clash text-title-md text-primary">
-					{activeTab === 'academie' ? 'Candidature envoyée !' : 'Demande envoyée !'}
+					{acceptedLink ? 'Dossier envoyé !' : activeTab === 'academie' ? 'Inscription envoyée !' : 'Demande envoyée !'}
 				</p>
 				<p class="mt-2 text-dark/70">
-					{activeTab === 'academie'
-						? "Après étude du dossier, l'Academy contactera les profils retenus pour la suite du processus."
+					{acceptedLink
+						? "Merci ! Ton dossier a bien été reçu, le staff va l'étudier."
+						: activeTab === 'academie'
+						? "On t'attend ce week-end ! Tu vas recevoir un email de confirmation et un membre du staff te contactera avec toutes les infos."
 						: 'On te recontacte très vite.'}
 				</p>
 			</div>
@@ -291,6 +293,7 @@
 							>Écris-le à nouveau pour éviter une faute de frappe</span
 						>
 					</label>
+					{#if activeTab !== 'academie'}
 					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Compte Instagram</span>
 						<input
@@ -305,6 +308,8 @@
 						>
 					</label>
 
+					{/if}
+
 					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Date de naissance</span>
 						<input
@@ -317,77 +322,7 @@
 						<span class="text-xs text-dark-accent">Inscriptions ouvertes de 16 à 28 ans</span>
 					</label>
 
-					{#if activeTab === 'academie'}
-						<label class="flex flex-col gap-2">
-							<span class="text-dark/70">Lieu de naissance</span>
-							<input
-								name="birth_place"
-								required
-								value={form?.values?.birth_place ?? ''}
-								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-							/>
-						</label>
-						<label class="flex flex-col gap-2">
-							<span class="text-dark/70">Nationalité</span>
-							<input
-								name="nationality"
-								required
-								value={form?.values?.nationality ?? ''}
-								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-							/>
-						</label>
-
-						<label class="flex flex-col gap-2 sm:col-span-2">
-							<span class="text-dark/70">Adresse postale</span>
-							<input
-								name="address"
-								required
-								value={form?.values?.address ?? ''}
-								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-							/>
-						</label>
-						<label class="flex flex-col gap-2">
-							<span class="text-dark/70">Code postal</span>
-							<input
-								name="postal_code"
-								required
-								value={form?.values?.postal_code ?? ''}
-								class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none"
-							/>
-						</label>
-
-						<div class="mb-4">
-							<label class="mb-1 block text-dark/70" for="current_club">Club actuel</label>
-							<input
-								id="current_club"
-								name="current_club"
-								type="text"
-								class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
-							/>
-						</div>
-
-						<div class="mb-4">
-							<label class="mb-1 block text-dark/70" for="division">Division</label>
-							<select
-								id="division"
-								name="division"
-								class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
-							>
-								<option value="">Sélectionne ta division</option>
-								<option value="nationale_1">Nationale 1</option>
-								<option value="nationale_2">Nationale 2</option>
-								<option value="nationale_3">Nationale 3</option>
-								<option value="provinciale_1">Provinciale 1</option>
-								<option value="provinciale_2">Provinciale 2</option>
-								<option value="provinciale_3">Provinciale 3</option>
-								<option value="provinciale_4">Provinciale 4</option>
-								<option value="regionale">Régionale</option>
-								<option value="u23">U23</option>
-								<option value="u18_elite">U18 Elite</option>
-								<option value="autre">Autre</option>
-							</select>
-						</div>
-					{/if}
+					{#if activeTab !== 'academie'}
 					<label class="flex flex-col gap-2">
 						<span class="text-dark/70">Poste préféré</span>
 						<select
@@ -420,8 +355,10 @@
 							</optgroup>
 						</select>
 					</label>
+					{/if}
 				</div>
 
+				{#if activeTab !== 'academie'}
 				<div class="mb-4">
 					<label class="mb-1 block text-dark/70" for="id_card_front">Carte d'identité — Recto</label
 					>
@@ -471,6 +408,8 @@
 						<p class="mt-1 text-xs text-red-600">{idBackError}</p>
 					{/if}
 				</div>
+
+				{/if}
 
 				{#if form?.error}
 					<p class="text-sm text-red-600">{form.error}</p>

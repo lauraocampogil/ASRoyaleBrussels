@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import type { PageData } from './$types';
+	import FilterMenu from '$lib/components/admin/FilterMenu.svelte';
 	import { cleanInstagram } from '$lib/instagram';
 	import { DOSSIER_SECTIONS, FEES, MONTH_LABELS } from '$lib/dossier';
 
@@ -37,8 +38,232 @@
 		return `${MONTH_LABELS[Number(m) - 1] ?? m} ${y}`;
 	};
 	let totalCollected = $derived(
-		acceptedPlayers.reduce((sum: number, p: any) => sum + payTotal(p), 0)
+		memberPlayers.reduce((sum: number, p: any) => sum + payTotal(p), 0)
 	);
+	// --- Paiements (vue mensuelle) ---
+	let payFilter = $state<'all' | 'paid' | 'unpaid'>('all');
+	let paySearch = $state('');
+	let payPage = $state(1);
+	const PAY_SIZE = 10;
+	const payToday = new Date().toISOString().slice(0, 10);
+	const feeOf = (p: any) => (normGender(p.gender) === 'fille' ? FEES.monthly.fille : FEES.monthly.garcon);
+	function shiftPayMonth(delta: number) {
+		const [y, m] = payMonth.split('-').map(Number);
+		const d = new Date(y, m - 1 + delta, 1);
+		payMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+	}
+	let payRows = $derived(
+		memberPlayers.map((p: any) => ({
+			p,
+			month: monthEntry(p, payMonth),
+			annual: annualEntry(p),
+			fee: feeOf(p)
+		}))
+	);
+	let payExpected = $derived(payRows.reduce((s: number, r: any) => s + r.fee, 0));
+	let payCollected = $derived(payRows.reduce((s: number, r: any) => s + (r.month ? Number(r.month.montant) || r.fee : 0), 0));
+	let payPaidCount = $derived(payRows.filter((r: any) => r.month).length);
+	let payAnnualCount = $derived(payRows.filter((r: any) => r.annual).length);
+	let payFiltered = $derived(
+		payRows.filter(
+			(r: any) =>
+				(payFilter === 'all' || (payFilter === 'paid' ? !!r.month : !r.month)) &&
+				statsKey(`${r.p.first_name} ${r.p.last_name}`).includes(statsKey(paySearch.trim()))
+		)
+	);
+	let payPageCount = $derived(Math.max(1, Math.ceil(payFiltered.length / PAY_SIZE)));
+	let payPaged = $derived(payFiltered.slice((payPage - 1) * PAY_SIZE, payPage * PAY_SIZE));
+	$effect(() => {
+		payFilter;
+		paySearch;
+		payMonth;
+		payPage = 1;
+	});
+	// --- Historique annuel (Paiements) et historique des séances (Présences) ---
+	let payMode = $state<'mois' | 'annee'>('mois');
+	let presMode = $state<'jour' | 'historique'>('jour');
+	let histYear = $state(new Date().getFullYear());
+	let histPayPage = $state(1);
+	let histPresPage = $state(1);
+	const histMonths = $derived(
+		Array.from({ length: 12 }, (_, i) => `${histYear}-${String(i + 1).padStart(2, '0')}`)
+	);
+	let yearRows = $derived(
+		memberPlayers.map((p: any) => {
+			const cells = histMonths.map((k: string) => monthEntry(p, k));
+			const annual = payList(p).find((e: any) => e.type === 'annuel' && String(e.date).startsWith(String(histYear)));
+			const total =
+				cells.reduce((sum: number, e: any) => sum + (e ? Number(e.montant) || 0 : 0), 0) +
+				(annual ? Number(annual.montant) || 0 : 0);
+			return { p, cells, annual, total };
+		})
+	);
+	let yearTotal = $derived(yearRows.reduce((sum: number, r: any) => sum + r.total, 0));
+	let yearMonthTotals = $derived(
+		histMonths.map((_: string, i: number) => yearRows.filter((r: any) => r.cells[i]).length)
+	);
+	let yearPageCount = $derived(Math.max(1, Math.ceil(yearRows.length / 10)));
+	let yearPaged = $derived(yearRows.slice((histPayPage - 1) * 10, histPayPage * 10));
+	let sessionDates = $derived(
+		[...new Set(memberPlayers.flatMap((p: any) => Object.keys(p.presences ?? {})))].sort() as string[]
+	);
+	let presRows = $derived(
+		memberPlayers.map((p: any) => {
+			const present = sessionDates.filter((d) => p.presences?.[d] === 'present').length;
+			const absent = sessionDates.filter((d) => p.presences?.[d] === 'absent').length;
+			return { p, present, absent, rate: present + absent ? Math.round((present / (present + absent)) * 100) : null };
+		})
+	);
+	let presAvgRate = $derived(
+		(() => {
+			const r = presRows.filter((x: any) => x.rate !== null);
+			return r.length ? Math.round(r.reduce((a: number, x: any) => a + x.rate, 0) / r.length) : 0;
+		})()
+	);
+	let presHistPageCount = $derived(Math.max(1, Math.ceil(presRows.length / 10)));
+	let presHistPaged = $derived(presRows.slice((histPresPage - 1) * 10, histPresPage * 10));
+	// --- Présences (refonte) ---
+	let psGender = $state<'all' | 'fille' | 'garcon'>('all');
+	let psSearch = $state('');
+	let psPage = $state(1);
+	let psPeriod = $state<'semaine' | 'mois' | 'annee'>('semaine');
+	let psRef = $state(new Date());
+	let psHistPage = $state(1);
+	const PS_SIZE = 10;
+	const isoLocal = (d: Date) =>
+		`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+	const addDays = (d: Date, n: number) => {
+		const x = new Date(d);
+		x.setDate(x.getDate() + n);
+		return x;
+	};
+	const psKeep: SubmitFunction = () => async ({ update }) => {
+		await update({ reset: false });
+	};
+	function psShiftDay(n: number) {
+		presDate = isoLocal(addDays(new Date(presDate + 'T12:00:00'), n));
+	}
+	function psShiftPeriod(n: number) {
+		const d = new Date(psRef);
+		if (psPeriod === 'semaine') d.setDate(d.getDate() + 7 * n);
+		else if (psPeriod === 'mois') d.setMonth(d.getMonth() + n, 1);
+		else d.setFullYear(d.getFullYear() + n);
+		psRef = d;
+	}
+	function isoWeek(d: Date) {
+		const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+		t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+		const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+		return Math.ceil(((+t - +y0) / 86400000 + 1) / 7);
+	}
+	const shortDate = (iso: string) =>
+		new Date(iso + 'T12:00:00').toLocaleDateString('fr-BE', { day: 'numeric', month: 'short' });
+	const rateTone = (r: number | null) =>
+		r === null
+			? 'bg-[#f4f5f7] text-dark-accent'
+			: r >= 75
+				? 'bg-green-100 text-green-700'
+				: r >= 50
+					? 'bg-amber-100 text-amber-700'
+					: 'bg-red-100 text-red-600';
+
+	let psPlayers = $derived(
+		memberPlayers.filter(
+			(p: any) =>
+				(psGender === 'all' || normGender(p.gender) === psGender) &&
+				statsKey(`${p.first_name} ${p.last_name}`).includes(statsKey(psSearch.trim()))
+		)
+	);
+	let psPaged = $derived(psPlayers.slice((psPage - 1) * PS_SIZE, psPage * PS_SIZE));
+	let psPageCount = $derived(Math.max(1, Math.ceil(psPlayers.length / PS_SIZE)));
+	let psDay = $derived({
+		present: psPlayers.filter((p: any) => p.presences?.[presDate] === 'present').length,
+		absent: psPlayers.filter((p: any) => p.presences?.[presDate] === 'absent').length,
+		unset: psPlayers.filter((p: any) => !p.presences?.[presDate]).length
+	});
+	let psRecent = $derived([...sessionDates].reverse().slice(0, 6));
+	const psLast = (p: any) => sessionDates.slice(-5).map((d: string) => p.presences?.[d] ?? '');
+
+	let psRange = $derived.by(() => {
+		const r = new Date(psRef);
+		if (psPeriod === 'semaine') {
+			const mon = addDays(r, -((r.getDay() + 6) % 7));
+			const sun = addDays(mon, 6);
+			return {
+				start: isoLocal(mon),
+				end: isoLocal(sun),
+				label: `Semaine ${isoWeek(mon)} · ${shortDate(isoLocal(mon))} – ${shortDate(isoLocal(sun))} ${sun.getFullYear()}`
+			};
+		}
+		if (psPeriod === 'mois') {
+			const first = new Date(r.getFullYear(), r.getMonth(), 1);
+			const last = new Date(r.getFullYear(), r.getMonth() + 1, 0);
+			return {
+				start: isoLocal(first),
+				end: isoLocal(last),
+				label: `${MONTH_LABELS[r.getMonth()]} ${r.getFullYear()}`
+			};
+		}
+		return { start: `${r.getFullYear()}-01-01`, end: `${r.getFullYear()}-12-31`, label: String(r.getFullYear()) };
+	});
+	let psSessions = $derived(sessionDates.filter((d: string) => d >= psRange.start && d <= psRange.end));
+	let psMonths = $derived(
+		Array.from({ length: 12 }, (_, i) => `${psRange.start.slice(0, 4)}-${String(i + 1).padStart(2, '0')}`)
+	);
+	let psHistRows = $derived(
+		memberPlayers
+			.filter((p: any) => psGender === 'all' || normGender(p.gender) === psGender)
+			.map((p: any) => {
+				const inRange = psSessions.map((d: string) => p.presences?.[d] ?? '');
+				const present = inRange.filter((v: string) => v === 'present').length;
+				const absent = inRange.filter((v: string) => v === 'absent').length;
+				const months = psMonths.map((m: string) => {
+					const ds = sessionDates.filter((d: string) => d.startsWith(m));
+					const pr = ds.filter((d: string) => p.presences?.[d] === 'present').length;
+					const ab = ds.filter((d: string) => p.presences?.[d] === 'absent').length;
+					return { pr, tot: pr + ab, rate: pr + ab ? Math.round((pr / (pr + ab)) * 100) : null };
+				});
+				const mp = months.reduce((a: number, x: any) => a + x.pr, 0);
+				const mt = months.reduce((a: number, x: any) => a + x.tot, 0);
+				const total = psPeriod === 'annee' ? mt : present + absent;
+				const good = psPeriod === 'annee' ? mp : present;
+				return { p, inRange, months, present: good, total, rate: total ? Math.round((good / total) * 100) : null };
+			})
+	);
+	let psTotalPresent = $derived(psHistRows.reduce((a: number, r: any) => a + r.present, 0));
+	let psTotalAll = $derived(psHistRows.reduce((a: number, r: any) => a + r.total, 0));
+	let psTotalRate = $derived(psTotalAll ? Math.round((psTotalPresent / psTotalAll) * 100) : null);
+	let psHistPaged = $derived(psHistRows.slice((psHistPage - 1) * PS_SIZE, psHistPage * PS_SIZE));
+	let psHistPageCount = $derived(Math.max(1, Math.ceil(psHistRows.length / PS_SIZE)));
+	let psAvg = $derived.by(() => {
+		const r = psHistRows.filter((x: any) => x.rate !== null);
+		return r.length ? Math.round(r.reduce((a: number, x: any) => a + x.rate, 0) / r.length) : null;
+	});
+	// Barres : une par séance (semaine/mois) ou par mois (année) = nb de présents
+	let psBars = $derived(
+		psPeriod === 'annee'
+			? psMonths.map((m: string, i: number) => ({
+					label: MONTH_LABELS[i].slice(0, 3),
+					value: psHistRows.reduce((a: number, r: any) => a + r.months[i].pr, 0),
+					total: psHistRows.reduce((a: number, r: any) => a + r.months[i].tot, 0)
+				}))
+			: psSessions.map((d: string) => ({
+					label: shortDate(d),
+					value: psHistRows.filter((r: any) => r.p.presences?.[d] === 'present').length,
+					total: psHistRows.filter((r: any) => r.p.presences?.[d]).length
+				}))
+	);
+	$effect(() => {
+		psGender;
+		psSearch;
+		psPage = 1;
+	});
+	$effect(() => {
+		psGender;
+		psPeriod;
+		psRef;
+		psHistPage = 1;
+	});
 	const FOOT: Record<string, string> = { droit: 'Droit', gauche: 'Gauche', les_deux: 'Les deux' };
 	function fmtDossier(key: string, value: unknown) {
 		if (value === true) return 'Oui';
@@ -54,6 +279,17 @@
 	let infoSending = $state(false);
 	let makeupSending = $state(false);
 	let tdAll = $derived(data.players.filter((p: any) => p.type === 'talent_days'));
+	const hasDossierOf = (p: any) => !!p.dossier && Object.keys(p.dossier).length > 0;
+	let tdEditionPassed = $derived(data.talentDayEdition?.passed ?? false);
+	let tdUpcomingCount = $derived(tdArchived ? 0 : tdAll.length);
+	let essaiAll = $derived(data.players.filter((p: any) => p.type !== 'talent_days'));
+	let toTreatCount = $derived(data.players.filter((p: any) => p.status === 'pending').length);
+	let dossierMissingCount = $derived(
+		data.players.filter((p: any) => p.status === 'accepted' && !hasDossierOf(p)).length
+	);
+	let memberCount = $derived(
+		data.players.filter((p: any) => p.status === 'accepted' && hasDossierOf(p)).length
+	);
 	let presentCount = $derived(tdAll.filter((p: any) => p.venue === true).length);
 	let absentCount = $derived(tdAll.filter((p: any) => p.venue === false).length);
 	let unknownCount = $derived(tdAll.filter((p: any) => p.venue !== true && p.venue !== false).length);
@@ -278,6 +514,9 @@
 		data.players.filter((p: any) => p.type === 'academie' && p.status !== 'accepted')
 	);
 	let acceptedPlayers = $derived(data.players.filter((p: any) => p.status === 'accepted'));
+	// Seuls les joueurs acceptés ayant rempli tout le formulaire de dossier sont suivis (présences, paiements).
+	let memberPlayers = $derived(acceptedPlayers.filter((p: any) => hasDossierOf(p)));
+	let notMemberYet = $derived(acceptedPlayers.filter((p: any) => !hasDossierOf(p)));
 
 	let femaleCount = $derived(
 		data.players.filter((p: any) => normGender(p.gender) === 'fille').length
@@ -298,8 +537,8 @@
 	let recentPlayers = $derived(data.players.slice(0, 5));
 
 	let talentDayDaysLeft = $derived(
-		data.talentDay
-			? Math.ceil((new Date(data.talentDay.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+		data.talentDayEdition
+			? Math.ceil((new Date(data.talentDayEdition.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
 			: null
 	);
 
@@ -307,20 +546,37 @@
 		return total ? Math.round((count / total) * 100) : 0;
 	}
 
+	let tdArchived = $derived(data.talentDayEdition?.archived ?? false);
+	let tdTab = $state<'current' | 'history'>('current');
+	// Édition en cours : visible jusqu'à 7 jours après l'événement, puis vide (tout passe en historique).
+	// Une fois l'édition passée, les « pas venus » partent directement en historique.
+	let tdShown = $derived(
+		tdTab === 'history'
+			? talentDayPlayers
+			: tdArchived
+				? []
+				: tdEditionPassed
+					? talentDayPlayers.filter((p: any) => p.venue !== false)
+					: talentDayPlayers
+	);
+
 	let baseFiltered = $derived(
 		viewMode === 'talent_days'
-			? talentDayPlayers
+			? tdShown
 			: viewMode === 'academie'
 				? academiePlayers
 				: acceptedPlayers
 	);
 
+	let lsStatus = $state<'all' | 'pending' | 'rejected'>('all');
+	let lsSearch = $state('');
+	let expandedId = $state<number | null>(null);
 	let filteredPlayers = $derived(
 		(genderFilter === 'all'
 			? baseFiltered
 			: baseFiltered.filter((p: any) => normGender(p.gender) === genderFilter)
 		).filter((p: any) =>
-			viewMode !== 'talent_days' || presenceFilter === 'all'
+			(viewMode !== 'talent_days' && viewMode !== 'academie') || presenceFilter === 'all'
 				? true
 				: presenceFilter === 'venu'
 					? p.venue === true
@@ -328,7 +584,50 @@
 						? p.venue === false
 						: p.venue !== true && p.venue !== false
 		)
+			.filter((p: any) => lsStatus === 'all' || p.status === lsStatus)
+			.filter((p: any) =>
+				statsKey(`${p.first_name} ${p.last_name} ${p.email}`).includes(statsKey(lsSearch.trim()))
+			)
 	);
+	let lsCounts = $derived({
+		total: baseFiltered.length,
+		pending: baseFiltered.filter((p: any) => p.status === 'pending').length,
+		rejected: baseFiltered.filter((p: any) => p.status === 'rejected').length,
+		venu: baseFiltered.filter((p: any) => p.venue === true).length,
+		pasVenu: baseFiltered.filter((p: any) => p.venue === false).length
+	});
+	const ageOf = (d: string | null) =>
+		d ? Math.floor((Date.now() - new Date(d).getTime()) / 31557600000) : null;
+	const statusBar = (st: string) =>
+		st === 'rejected' ? 'border-l-red-400' : st === 'accepted' ? 'border-l-blue-500' : 'border-l-amber-400';
+
+	let statsPage = $state(1);
+	let statsPaged = $derived(statsPlayers.slice((statsPage - 1) * 10, (statsPage + 0) * 10));
+	let statsPageCount = $derived(Math.max(1, Math.ceil(statsPlayers.length / 10)));
+	let statsGoals = $derived(statsPlayers.reduce((a: number, p: any) => a + (Number((p.siteProfile ?? p.stats)?.goals) || 0), 0));
+	let statsAssists = $derived(statsPlayers.reduce((a: number, p: any) => a + (Number((p.siteProfile ?? p.stats)?.assists) || 0), 0));
+	let statsMissing = $derived(statsPlayers.filter((p: any) => !p.siteProfile).length);
+	$effect(() => {
+		genderFilter;
+		statsSearch;
+		statsPage = 1;
+	});
+
+	const LIST_SIZE = 10;
+	let listPage = $state(1);
+	let listPageCount = $derived(Math.max(1, Math.ceil(filteredPlayers.length / LIST_SIZE)));
+	let pagedPlayers = $derived(
+		filteredPlayers.slice((listPage - 1) * LIST_SIZE, listPage * LIST_SIZE)
+	);
+	$effect(() => {
+		viewMode;
+		genderFilter;
+		presenceFilter;
+		lsStatus;
+		lsSearch;
+		tdTab;
+		listPage = 1;
+	});
 
 	// Dans la liste "Joueurs inscrits" (mixte), on sait s'il faut montrer les colonnes
 	// académie dès qu'au moins un joueur affiché est de type "academie".
@@ -344,7 +643,7 @@
 	}
 
 	let statsPlayers = $derived(
-		acceptedPlayers.filter(
+		memberPlayers.filter(
 			(p: any) =>
 				(genderFilter === 'all' || normGender(p.gender) === genderFilter) &&
 				statsKey(`${p.first_name} ${p.last_name}`).includes(statsKey(statsSearch.trim()))
@@ -762,687 +1061,672 @@
 
 <div class="mx-auto max-w-7xl">
 	{#if viewMode === 'overview'}
-		<h1 class="font-clash mb-4 text-xl text-dark sm:text-2xl">Vue d'ensemble</h1>
 
-		{#if data.talentDay && talentDayDaysLeft !== null}
-			<div
-				class="mb-4 flex flex-col gap-2 rounded-2xl bg-secondary p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-			>
+		{#if data.talentDayEdition}
+			<div class="mb-4 flex flex-col gap-2 rounded-2xl bg-secondary p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<p class="text-xs font-medium text-dark/70">Talent Day</p>
 					<p class="font-clash text-lg text-dark">
-						{new Intl.DateTimeFormat('fr-BE', {
-							day: 'numeric',
-							month: 'long',
-							year: 'numeric'
-						}).format(new Date(data.talentDay.date))}
+						{new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(data.talentDayEdition.date))}
 					</p>
 				</div>
 				<p class="font-clash text-2xl text-dark">
-					{talentDayDaysLeft > 0
-						? `J-${talentDayDaysLeft}`
-						: talentDayDaysLeft === 0
-							? "Aujourd'hui"
-							: 'Passé'}
+					{#if tdEditionPassed}Édition terminée{:else if talentDayDaysLeft === 0}Aujourd'hui{:else}J-{talentDayDaysLeft}{/if}
 				</p>
 			</div>
 		{/if}
 
-		<div class="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-			<div class="rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-				<div
-					class="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600"
-				>
-					<svg
-						width="18"
-						height="18"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
-					</svg>
+		<!-- Ce qu'il faut faire -->
+		<div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+			<a href="/admin/joueurs" class="rounded-2xl border-l-4 border-l-amber-400 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+				<p class="text-xs font-medium text-dark-accent">Demandes à traiter</p>
+				<p class="font-clash text-3xl text-dark">{toTreatCount}</p>
+				<p class="mt-1 text-xs text-dark-accent">Accepter ou refuser →</p>
+			</a>
+			<a href="/admin/joueurs" class="rounded-2xl border-l-4 border-l-blue-500 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+				<p class="text-xs font-medium text-dark-accent">Acceptés — dossier à compléter</p>
+				<p class="font-clash text-3xl text-dark">{dossierMissingCount}</p>
+				<p class="mt-1 text-xs text-dark-accent">En attente du formulaire →</p>
+			</a>
+			<a href="/admin/joueurs" class="rounded-2xl border-l-4 border-l-green-500 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+				<p class="text-xs font-medium text-dark-accent">Joueurs acceptés (membres)</p>
+				<p class="font-clash text-3xl text-dark">{memberCount}</p>
+				<p class="mt-1 text-xs text-dark-accent">Dossier complet →</p>
+			</a>
+		</div>
+
+		<!-- Par source -->
+		<div class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+			<div class="rounded-2xl bg-white p-5 shadow-sm">
+				<div class="mb-4 flex items-center justify-between">
+					<p class="font-clash text-sm text-dark">Talent Day</p>
+					<a href="/admin?view=talent_days" class="text-xs text-dark-accent hover:text-dark">Voir la liste →</a>
 				</div>
-				<p class="text-xs font-medium text-dark-accent">Talent Day</p>
-				<p class="font-clash text-2xl text-dark">{talentDayPlayers.length}</p>
+				<div class="mb-4 flex items-end gap-3">
+					<p class="font-clash text-3xl text-dark">{tdUpcomingCount}</p>
+					<p class="pb-1 text-xs text-dark-accent">inscrits pour la prochaine édition</p>
+				</div>
+				<div class="grid grid-cols-4 gap-2 rounded-xl bg-[#f4f5f7] p-3 text-center">
+					<div><p class="font-clash text-lg text-dark">{tdAll.length}</p><p class="text-[11px] text-dark-accent">Inscrits</p></div>
+					<div><p class="font-clash text-lg text-green-600">{presentCount}</p><p class="text-[11px] text-dark-accent">Venus</p></div>
+					<div><p class="font-clash text-lg text-red-500">{absentCount}</p><p class="text-[11px] text-dark-accent">Pas venus</p></div>
+					<div><p class="font-clash text-lg text-dark-accent">{unknownCount}</p><p class="text-[11px] text-dark-accent">Non renseignés</p></div>
+				</div>
+				<p class="mt-2 text-[11px] text-dark-accent">{tdArchived ? 'Édition précédente' : 'Édition en cours'}</p>
 			</div>
-			<div class="rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-				<div
-					class="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600"
-				>
-					<svg
-						width="18"
-						height="18"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
-							cx="9"
-							cy="7"
-							r="4"
-						/><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-					</svg>
+
+			<div class="rounded-2xl bg-white p-5 shadow-sm">
+				<div class="mb-4 flex items-center justify-between">
+					<p class="font-clash text-sm text-dark">Faire un essai</p>
+					<a href="/admin?view=academie" class="text-xs text-dark-accent hover:text-dark">Voir la liste →</a>
 				</div>
-				<p class="text-xs font-medium text-dark-accent">Académie</p>
-				<p class="font-clash text-2xl text-dark">{academiePlayers.length}</p>
-			</div>
-			<div class="rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-				<div
-					class="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600"
-				>
-					<svg
-						width="18"
-						height="18"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<polyline points="20 6 9 17 4 12" />
-					</svg>
+				<div class="mb-4 flex items-end gap-3">
+					<p class="font-clash text-3xl text-dark">{essaiAll.length}</p>
+					<p class="pb-1 text-xs text-dark-accent">demandes au total</p>
 				</div>
-				<p class="text-xs font-medium text-dark-accent">Joueurs inscrits</p>
-				<p class="font-clash text-2xl text-dark">{acceptedPlayers.length}</p>
-			</div>
-				<div class="rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-					<div
-						class="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600"
-					>
-						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-						</svg>
-					</div>
-					<p class="text-xs font-medium text-dark-accent">Présences Talent Day</p>
-					<p class="font-clash text-2xl text-dark">{presentCount} <span class="text-sm text-dark-accent">venus</span></p>
-					<p class="mt-1 text-xs text-dark-accent">
-						{absentCount} pas venus · {unknownCount} non renseignés
-					</p>
+				<div class="grid grid-cols-3 gap-2 rounded-xl bg-[#f4f5f7] p-3 text-center">
+					<div><p class="font-clash text-lg text-amber-600">{essaiAll.filter((p: any) => p.status === 'pending').length}</p><p class="text-[11px] text-dark-accent">À traiter</p></div>
+					<div><p class="font-clash text-lg text-green-600">{essaiAll.filter((p: any) => p.status === 'accepted').length}</p><p class="text-[11px] text-dark-accent">Acceptés</p></div>
+					<div><p class="font-clash text-lg text-red-500">{essaiAll.filter((p: any) => p.status === 'rejected').length}</p><p class="text-[11px] text-dark-accent">Refusés</p></div>
 				</div>
-			<div class="rounded-2xl bg-dark p-5 shadow-sm transition-shadow hover:shadow-md">
-				<div
-					class="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-dark"
-				>
-					<svg
-						width="18"
-						height="18"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" />
-					</svg>
-				</div>
-				<p class="text-xs font-medium text-white/60">Total</p>
-				<p class="font-clash text-2xl text-white">{data.players.length}</p>
 			</div>
 		</div>
 
 		<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 			<div class="rounded-2xl bg-white p-5 shadow-sm">
+				<p class="font-clash mb-4 text-sm text-dark">Étapes des candidatures</p>
+				{#each [['En attente', toTreatCount, 'bg-amber-400'], ['Dossier à compléter', dossierMissingCount, 'bg-blue-500'], ['Membres (dossier complet)', memberCount, 'bg-green-500'], ['Refusés', rejectedCount, 'bg-red-400']] as [label, n, color]}
+					<div class="mb-3 last:mb-0">
+						<div class="mb-1 flex justify-between text-xs text-dark-accent"><span>{label}</span><span>{n}</span></div>
+						<div class="h-2 w-full overflow-hidden rounded-full bg-[#f4f5f7]">
+							<div class="h-full rounded-full {color}" style="width: {pct(n as number, data.players.length)}%"></div>
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<div class="rounded-2xl bg-white p-5 shadow-sm">
 				<p class="font-clash mb-4 text-sm text-dark">Répartition par genre</p>
 				<div class="mb-3">
-					<div class="mb-1 flex justify-between text-xs text-dark-accent">
-						<span>Femmes</span><span>{femaleCount}</span>
-					</div>
-					<div class="h-2 w-full overflow-hidden rounded-full bg-[#f4f5f7]">
-						<div
-							class="h-full rounded-full bg-purple-400"
-							style="width: {pct(femaleCount, genderKnownTotal)}%"
-						></div>
-					</div>
+					<div class="mb-1 flex justify-between text-xs text-dark-accent"><span>Femmes</span><span>{femaleCount}</span></div>
+					<div class="h-2 w-full overflow-hidden rounded-full bg-[#f4f5f7]"><div class="h-full rounded-full bg-purple-400" style="width: {pct(femaleCount, genderKnownTotal)}%"></div></div>
 				</div>
 				<div>
-					<div class="mb-1 flex justify-between text-xs text-dark-accent">
-						<span>Hommes</span><span>{maleCount}</span>
-					</div>
-					<div class="h-2 w-full overflow-hidden rounded-full bg-[#f4f5f7]">
-						<div
-							class="h-full rounded-full bg-blue-400"
-							style="width: {pct(maleCount, genderKnownTotal)}%"
-						></div>
-					</div>
+					<div class="mb-1 flex justify-between text-xs text-dark-accent"><span>Hommes</span><span>{maleCount}</span></div>
+					<div class="h-2 w-full overflow-hidden rounded-full bg-[#f4f5f7]"><div class="h-full rounded-full bg-blue-400" style="width: {pct(maleCount, genderKnownTotal)}%"></div></div>
 				</div>
+				<p class="mt-4 text-xs text-dark-accent">Total toutes demandes : {data.players.length}</p>
 			</div>
 
 			<div class="rounded-2xl bg-white p-5 shadow-sm">
-				<p class="font-clash mb-4 text-sm text-dark">Statut des candidatures</p>
-				<div class="mb-3">
-					<div class="mb-1 flex justify-between text-xs text-dark-accent">
-						<span>En attente</span><span>{pendingCount}</span>
-					</div>
-					<div class="h-2 w-full overflow-hidden rounded-full bg-[#f4f5f7]">
-						<div
-							class="h-full rounded-full bg-yellow-400"
-							style="width: {pct(pendingCount, data.players.length)}%"
-						></div>
-					</div>
-				</div>
-				<div class="mb-3">
-					<div class="mb-1 flex justify-between text-xs text-dark-accent">
-						<span>Acceptés</span><span>{acceptedPlayers.length}</span>
-					</div>
-					<div class="h-2 w-full overflow-hidden rounded-full bg-[#f4f5f7]">
-						<div
-							class="h-full rounded-full bg-green-400"
-							style="width: {pct(acceptedPlayers.length, data.players.length)}%"
-						></div>
-					</div>
-				</div>
-				<div>
-					<div class="mb-1 flex justify-between text-xs text-dark-accent">
-						<span>Refusés</span><span>{rejectedCount}</span>
-					</div>
-					<div class="h-2 w-full overflow-hidden rounded-full bg-[#f4f5f7]">
-						<div
-							class="h-full rounded-full bg-red-400"
-							style="width: {pct(rejectedCount, data.players.length)}%"
-						></div>
-					</div>
-				</div>
-				<p class="mt-4 text-xs text-dark-accent">{completionRate}% des dossiers sont complets</p>
-			</div>
-
-			<div class="rounded-2xl bg-white p-5 shadow-sm">
-				<p class="font-clash mb-4 text-sm text-dark">Dernières inscriptions</p>
+				<p class="font-clash mb-4 text-sm text-dark">Dernières demandes</p>
 				<div class="flex flex-col gap-3">
 					{#each recentPlayers as player (player.id)}
-						<div class="flex items-center justify-between gap-2">
+						<a href={`/admin/joueurs?joueur=${player.id}`} class="flex items-center justify-between gap-2 rounded-lg hover:bg-[#f4f5f7]">
 							<div class="flex items-center gap-2">
-								<span
-									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
-								>
-									{initials(player)}
-								</span>
-								<span class="truncate text-sm text-dark"
-									>{player.first_name} {player.last_name}</span
-								>
+								<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(player)}</span>
+								<span class="truncate text-sm text-dark">{player.first_name} {player.last_name}</span>
 							</div>
 							<span class="shrink-0 rounded-full bg-[#f4f5f7] px-2 py-1 text-xs text-dark-accent">
-								{player.type === 'talent_days' ? 'Talent Day' : 'Académie'}
+								{player.type === 'talent_days' ? 'Talent Day' : 'Faire un essai'}
 							</span>
-						</div>
+						</a>
 					{:else}
-						<p class="text-xs text-dark-accent">Aucune inscription pour le moment.</p>
+						<p class="text-xs text-dark-accent">Aucune demande pour le moment.</p>
 					{/each}
 				</div>
 			</div>
 		</div>
 	{:else if viewMode === 'presences'}
-		<div class="rounded-2xl bg-white p-5 shadow-sm">
-			<h1 class="font-clash mb-1 text-xl text-dark sm:text-2xl">
-				Présences ({acceptedPlayers.length} joueurs)
-			</h1>
-			<p class="mb-5 text-sm text-dark-accent">
-				Choisis la date, coche Présent ou Absent pour chaque joueur, puis enregistre une seule fois.
-			</p>
+		<div class="mb-4 flex w-fit max-w-full overflow-x-auto rounded-full bg-white p-1 shadow-sm">
+			{#each [['jour', 'Séance du jour'], ['historique', 'Historique']] as [k, l]}
+				<button type="button" onclick={() => (presMode = k as any)} class="whitespace-nowrap rounded-full px-5 py-2 text-sm font-medium {presMode === k ? 'bg-dark text-white' : 'text-dark-accent'}">{l}</button>
+			{/each}
+		</div>
 
-			{#if acceptedPlayers.length === 0}
-				<p class="rounded-xl bg-[#f4f5f7] px-4 py-3 text-sm text-dark-accent">
-					Aucun joueur accepté pour le moment.
-				</p>
-			{:else}
-				<form
-					method="POST"
-					action="?/savePresences"
-					bind:this={presForm}
-					use:enhance={() => {
-						presMsg = 'Enregistrement...';
-						return async ({ result, update }) => {
-							presMsg =
-								result.type === 'success'
-									? `✓ Enregistré (${(result.data as any)?.saved ?? 0} modifié(s))`
-									: String((result as any).data?.error ?? 'Erreur');
-							await update({ reset: false });
-						};
-					}}
-				>
-					<div
-						class="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-[#f4f5f7] p-3"
-					>
-						<label class="flex items-center gap-2 text-sm font-medium text-dark">
-							Date
-							<input
-								type="date"
-								name="date"
-								required
-								bind:value={presDate}
-								class="rounded-xl border border-dark-accent/10 bg-white px-3 py-2 text-sm text-dark"
-							/>
-						</label>
-						<button
-							type="button"
-							onclick={() => markAll('present')}
-							class="rounded-xl bg-white px-3 py-2 text-xs text-dark-accent hover:bg-dark-accent/10"
-							>Tous présents</button
-						>
-						<button
-							type="submit"
-							class="ml-auto rounded-xl bg-primary px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-							>Enregistrer</button
-						>
-						{#if presMsg}<span class="w-full text-xs text-dark-accent sm:w-auto">{presMsg}</span>{/if}
-					</div>
 
-					{#key presDate}
-						<ul class="flex flex-col divide-y divide-dark-accent/10">
-							{#each acceptedPlayers as player (player.id)}
-								<li class="flex flex-col py-2.5">
-									<div class="flex items-center justify-between gap-3">
-									<div class="min-w-0">
-										<button
-												type="button"
-												onclick={() => (presOpen = presOpen === player.id ? null : player.id)}
-												class="flex items-center gap-1 truncate text-left text-sm font-medium text-dark hover:text-primary"
-												title="Voir toutes les dates"
-											>
-												{player.first_name}
-												{player.last_name}
-												<span class="text-xs text-dark-accent">{presOpen === player.id ? '▲' : '▼'}</span>
-											</button>
-										<p class="text-xs text-dark-accent">
-											{presTotal(player, 'present')} présent(s) · {presTotal(player, 'absent')} absent(s)
-										</p>
-									</div>
-									<div class="flex shrink-0 gap-2">
-										<label class="cursor-pointer">
-											<input
-												type="radio"
-												name={`s_${player.id}`}
-												value="present"
-												checked={presOf(player, presDate) === 'present'}
-												class="peer sr-only"
-											/>
-											<span
-												class="block rounded-full bg-[#f4f5f7] px-4 py-1.5 text-xs font-medium text-dark-accent peer-checked:bg-green-600 peer-checked:text-white"
-												>Présent</span
-											>
-										</label>
-										<label class="cursor-pointer">
-											<input
-												type="radio"
-												name={`s_${player.id}`}
-												value="absent"
-												checked={presOf(player, presDate) === 'absent'}
-												class="peer sr-only"
-											/>
-											<span
-												class="block rounded-full bg-[#f4f5f7] px-4 py-1.5 text-xs font-medium text-dark-accent peer-checked:bg-red-600 peer-checked:text-white"
-												>Absent</span
-											>
-										</label>
-									</div>
-									</div>
-
-									{#if presOpen === player.id}
-										<div class="mt-2 rounded-xl bg-[#f4f5f7] p-3">
-											<p class="mb-2 text-xs font-semibold uppercase text-dark-accent">
-												Historique de {player.first_name} · {presTotal(player, 'present')} venue(s) ·
-												{presTotal(player, 'absent')} absence(s)
-											</p>
-											{#if presList(player).length === 0}
-												<p class="text-sm text-dark-accent">Aucune date enregistrée.</p>
-											{:else}
-												<ul class="flex flex-col gap-1">
-													{#each presList(player) as [date, st] (date)}
-														<li class="flex items-center justify-between rounded-lg bg-white px-3 py-1.5 text-sm">
-															<span class="capitalize text-dark">{fmtLong(date)}</span>
-															<span
-																class="rounded-full px-3 py-0.5 text-xs font-medium {st === 'present'
-																	? 'bg-green-600 text-white'
-																	: 'bg-red-600 text-white'}"
-																>{st === 'present' ? 'Est venu(e)' : 'Absent(e)'}</span
-															>
-														</li>
-													{/each}
-												</ul>
-											{/if}
-										</div>
-									{/if}
-								</li>
-							{/each}
-						</ul>
-					{/key}
-				</form>
+		<!-- Filtres communs -->
+		<div class="mb-4 flex flex-wrap items-center gap-3">
+			<FilterMenu
+				items={[
+					{ label: 'Genre', value: psGender, def: 'all', options: [['all', 'Tous'], ['fille', 'Filles'], ['garcon', 'Garçons']], set: (v: string) => (psGender = v as any) },
+					...(presMode === 'historique'
+						? [{ label: 'Période', value: psPeriod, def: 'semaine', options: [['semaine', 'Semaine'], ['mois', 'Mois'], ['annee', 'Année']], set: (v: string) => (psPeriod = v as any) }]
+						: [])
+				]}
+			/>
+			{#if presMode === 'jour'}
+				<input bind:value={psSearch} placeholder="Rechercher un joueur…" class="min-w-52 flex-1 rounded-xl border border-dark-accent/10 bg-white px-4 py-2 text-sm" />
 			{/if}
 		</div>
-	{:else if viewMode === 'paiements'}
-		<div class="rounded-2xl bg-white p-5 shadow-sm">
-			<div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 class="font-clash text-xl text-dark sm:text-2xl">
-						Paiements ({acceptedPlayers.length} joueurs)
-					</h1>
-					<p class="text-sm text-dark-accent">
-						Annuel {FEES.annual} € · mensuel {FEES.monthly.garcon} € (hommes) / {FEES.monthly.fille}
-						€ (femmes). Choisis la date et la période, coche les joueurs qui ont payé, enregistre.
-					</p>
+
+		{#if presMode === 'jour'}
+			<!-- Choix de la date -->
+			<div class="mb-4 flex flex-wrap items-center gap-3">
+				<div class="flex w-full items-center justify-between gap-2 rounded-2xl bg-white p-1.5 shadow-sm sm:w-auto">
+					<button type="button" onclick={() => psShiftDay(-1)} class="flex h-9 w-9 items-center justify-center rounded-xl text-dark-accent hover:bg-[#f4f5f7]" aria-label="Jour précédent">←</button>
+					<div class="px-2 text-center">
+						<p class="font-clash text-base capitalize text-dark">{fmtLong(presDate)}</p>
+					</div>
+					<button type="button" onclick={() => psShiftDay(1)} class="flex h-9 w-9 items-center justify-center rounded-xl text-dark-accent hover:bg-[#f4f5f7]" aria-label="Jour suivant">→</button>
 				</div>
-				<span class="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-700"
-					>Total encaissé : {totalCollected} €</span
-				>
-			</div>
-
-			{#if acceptedPlayers.length === 0}
-				<p class="rounded-xl bg-[#f4f5f7] px-4 py-3 text-sm text-dark-accent">
-					Aucun joueur accepté pour le moment.
-				</p>
-			{:else}
-				<form
-					method="POST"
-					action="?/savePayments"
-					bind:this={payForm}
-					use:enhance={() => {
-						payMsg = 'Enregistrement...';
-						return async ({ result, update }) => {
-							payMsg =
-								result.type === 'success'
-									? `✓ ${(result.data as any)?.saved ?? 0} paiement(s) enregistré(s)`
-									: String((result as any).data?.error ?? 'Erreur');
-							await update({ reset: false });
-						};
-					}}
-				>
-					<div
-						class="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-[#f4f5f7] p-3"
-					>
-						<label class="flex items-center gap-2 text-sm font-medium text-dark">
-							Date du paiement
-							<input
-								type="date"
-								name="date"
-								required
-								bind:value={payDate}
-								class="rounded-xl border border-dark-accent/10 bg-white px-3 py-2 text-sm text-dark"
-							/>
-						</label>
-						<select
-							name="type"
-							bind:value={payType}
-							class="rounded-xl border border-dark-accent/10 bg-white px-3 py-2 text-sm text-dark"
-						>
-							<option value="mensuel">Mensualité</option>
-							<option value="annuel">Cotisation annuelle</option>
-						</select>
-						{#if payType === 'mensuel'}
-							<input
-								type="month"
-								name="mois"
-								bind:value={payMonth}
-								class="rounded-xl border border-dark-accent/10 bg-white px-3 py-2 text-sm text-dark"
-							/>
-						{/if}
-						<button
-							type="button"
-							onclick={checkAllPay}
-							class="rounded-xl bg-white px-3 py-2 text-xs text-dark-accent hover:bg-dark-accent/10"
-							>Tout cocher</button
-						>
-						<button
-							type="submit"
-							class="ml-auto rounded-xl bg-primary px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-							>Enregistrer</button
-						>
-						{#if payMsg}<span class="w-full text-xs text-dark-accent sm:w-auto">{payMsg}</span>{/if}
-					</div>
-
-					{#key `${payType}-${payMonth}`}
-						<ul class="flex flex-col divide-y divide-dark-accent/10">
-							{#each acceptedPlayers as player (player.id)}
-								{@const done = payType === 'annuel' ? annualEntry(player) : monthEntry(player, payMonth)}
-								<li class="flex items-center justify-between gap-3 py-2.5">
-									<div class="min-w-0">
-										<p class="truncate text-sm font-medium text-dark">
-											{player.first_name}
-											{player.last_name}
-										</p>
-										<p class="text-xs text-dark-accent">
-											{payType === 'annuel'
-												? `${FEES.annual} €`
-												: monthlyFee(player)
-													? `${monthlyFee(player)} €`
-													: 'genre ?'} · total payé {payTotal(player)} €
-										</p>
-									</div>
-									{#if done}
-										<span class="shrink-0 rounded-full bg-green-600 px-3 py-1.5 text-xs font-medium text-white"
-											>✓ Payé le {formatDate(done.date)}</span
-										>
-									{:else}
-										<label class="cursor-pointer">
-											<input type="checkbox" name="paid" value={player.id} class="peer sr-only" />
-											<span
-												class="block rounded-full bg-red-100 px-4 py-1.5 text-xs font-medium text-red-700 peer-checked:bg-green-600 peer-checked:text-white"
-												>Non payé · cocher</span
-											>
-										</label>
-									{/if}
-								</li>
-							{/each}
-						</ul>
-					{/key}
-				</form>
-
-				<details class="mt-6 rounded-xl border border-dark-accent/10 p-3">
-					<summary class="cursor-pointer text-sm font-semibold text-dark"
-						>Historique des paiements (corriger une erreur)</summary
-					>
-					<div class="mt-3 flex flex-col gap-3">
-						{#each acceptedPlayers.filter((p: any) => payList(p).length > 0) as player (player.id)}
-							<div>
-								<p class="text-sm font-medium text-dark">
-									{player.first_name}
-									{player.last_name}
-								</p>
-								<ul class="mt-1 flex flex-col gap-1">
-									{#each payList(player) as entry (entry.id)}
-										<li class="flex items-center justify-between rounded-lg bg-green-50 px-3 py-1.5 text-sm">
-											<span>
-												{formatDate(entry.date)} ·
-												{entry.type === 'annuel' ? 'Cotisation annuelle' : monthLabel(entry.mois)}
-												· {entry.montant} €
-											</span>
-											<form method="POST" action="?/deletePayment" use:enhance class="inline">
-												<input type="hidden" name="id" value={player.id} />
-												<input type="hidden" name="entry" value={entry.id} />
-												<button
-													type="submit"
-													title="Supprimer ce paiement"
-													aria-label="Supprimer ce paiement"
-													onclick={(e) => {
-														if (!confirm('Supprimer ce paiement ?')) e.preventDefault();
-													}}
-													class="text-lg leading-none text-dark-accent hover:text-red-600">×</button
-												>
-											</form>
-										</li>
-									{/each}
-								</ul>
-							</div>
-						{/each}
-					</div>
-				</details>
-			{/if}
-		</div>
-	{:else if viewMode === 'stats'}
-		<div class="rounded-2xl bg-white p-5 shadow-sm">
-			<div class="mb-6 flex flex-wrap items-center gap-3">
-				<h1 class="font-clash text-xl text-dark sm:text-2xl">
-					Stats joueurs ({statsPlayers.length})
-				</h1>
-				<select
-					bind:value={genderFilter}
-					class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2 text-sm text-dark"
-				>
-					<option value="all">Tous les genres</option>
-					<option value="fille">Femmes</option>
-					<option value="garcon">Hommes</option>
-				</select>
-						{#if viewMode === 'talent_days'}
-							<select
-								bind:value={presenceFilter}
-								class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2 text-sm text-dark print:hidden"
-							>
-								<option value="all">Toutes les présences</option>
-								<option value="venu">Venus ({presentCount})</option>
-								<option value="pas_venu">Pas venus ({absentCount})</option>
-								<option value="inconnu">Non renseignés ({unknownCount})</option>
-							</select>
-						{/if}
-				<input
-					type="search"
-					bind:value={statsSearch}
-					placeholder="Rechercher un joueur"
-					aria-label="Rechercher un joueur"
-					class="w-full rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2 text-sm text-dark sm:w-60"
-				/>
-			</div>
-
-			{#if statsPlayers.length === 0}
-				<p class="rounded-xl bg-[#f4f5f7] px-4 py-3 text-sm text-dark-accent">
-					Aucun joueur accepté pour le moment.
-				</p>
-			{/if}
-
-			<div class="flex flex-col gap-3">
-				{#each statsPlayers as player (player.id)}
-					{#if player.siteProfile}
-						<form
-							method="POST"
-							action="?/updateStats"
-							use:enhance={() => {
-								return async ({ result, update }) => {
-									await update({ reset: false });
-									if (result.type === 'success') {
-										savedId = player.id;
-										setTimeout(() => (savedId = null), 2000);
-									}
-								};
-							}}
-							class="grid grid-cols-2 items-end gap-3 rounded-xl border border-dark-accent/10 p-4 md:grid-cols-[1.4fr_repeat(4,1fr)_auto]"
-						>
-							<input type="hidden" name="profile_id" value={player.siteProfile.id} />
-
-							<div class="col-span-2 flex items-center gap-3 md:col-span-1">
-								<span
-									class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
-								>
-									{initials(player)}
-								</span>
-								<div class="min-w-0">
-									<p class="truncate font-medium text-dark">
-										{player.first_name}
-										{player.last_name}
-									</p>
-									<p class="truncate text-xs text-dark-accent">{player.preferred_position}</p>
-								</div>
-							</div>
-
-							<label class="text-xs text-dark-accent">
-								Taille (cm)
-								<input
-									type="number"
-									name="height"
-									min="100"
-									max="230"
-									value={player.siteProfile.height ?? ''}
-									class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
-								/>
-							</label>
-							<label class="text-xs text-dark-accent">
-								Pied fort
-								<select
-									name="foot"
-									value={player.siteProfile.foot ?? ''}
-									class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
-								>
-									<option value="">—</option>
-									<option value="droit">Droit</option>
-									<option value="gauche">Gauche</option>
-									<option value="les deux">Les deux</option>
-									{#if player.siteProfile.foot && !['droit', 'gauche', 'les deux'].includes(player.siteProfile.foot)}
-										<option value={player.siteProfile.foot}>{player.siteProfile.foot}</option>
-									{/if}
-								</select>
-							</label>
-							<label class="text-xs text-dark-accent">
-								Buts
-								<input
-									type="number"
-									name="goals"
-									min="0"
-									value={player.siteProfile.goals ?? ''}
-									class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
-								/>
-							</label>
-							<label class="text-xs text-dark-accent">
-								Passes décisives
-								<input
-									type="number"
-									name="assists"
-									min="0"
-									value={player.siteProfile.assists ?? ''}
-									class="mt-1 w-full rounded-lg border border-dark-accent/20 bg-white px-3 py-2 text-sm text-dark"
-								/>
-							</label>
-
-							<button
-								type="submit"
-								class="col-span-2 rounded-full bg-secondary px-4 py-2 text-xs font-medium text-dark md:col-span-1"
-							>
-								{savedId === player.id ? 'Enregistré ✓' : 'Enregistrer'}
-							</button>
-						</form>
-					{:else}
-						<div
-							class="flex flex-col gap-1 rounded-xl border border-yellow-300 bg-yellow-50 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
-						>
-							<span class="font-medium text-dark">{player.first_name} {player.last_name}</span>
-							<span class="text-xs text-yellow-800">
-								Aucune fiche du site (Players) avec ce nom : crée-la ou corrige son nom dans
-								Directus.
-							</span>
-						</div>
-					{/if}
+				<input type="date" bind:value={presDate} class="rounded-xl border border-dark-accent/10 bg-white px-3 py-2 text-sm" />
+				<button type="button" onclick={() => (presDate = isoLocal(new Date()))} class="rounded-xl bg-white px-4 py-2 text-sm text-dark-accent shadow-sm hover:text-dark">Aujourd'hui</button>
+				{#each psRecent as d}
+					<button type="button" onclick={() => (presDate = d)} class="rounded-full px-3 py-1.5 text-xs font-medium {presDate === d ? 'bg-dark text-white' : 'bg-white text-dark-accent shadow-sm'}">{shortDate(d)}</button>
 				{/each}
 			</div>
-		</div>
-	{:else}
-		<div
-			class="rounded-2xl bg-white p-5 shadow-sm print:bg-transparent print:p-0 print:shadow-none"
-		>
-			<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div class="flex flex-wrap items-center gap-3">
-					{#if viewMode === 'talent_days' || viewMode === 'academie'}
-						<h1 class="font-clash text-xl text-dark sm:text-2xl">Inscription</h1>
-						<select
-							value={viewMode}
-							onchange={(e) => changeView(e.currentTarget.value)}
-							class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2 text-sm text-dark print:hidden"
-						>
-							<option value="talent_days">Talent Day ({talentDayPlayers.length})</option>
-							<option value="academie">Rejoindre l'académie ({academiePlayers.length})</option>
-						</select>
-					{:else}
-						<h1 class="font-clash text-xl text-dark sm:text-2xl">
-							Joueurs inscrits ({acceptedPlayers.length})
-						</h1>
-					{/if}
 
-					<select
-						bind:value={genderFilter}
-						class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2 text-sm text-dark print:hidden"
-					>
-						<option value="all">Tous les genres</option>
-						<option value="fille">Femmes</option>
-						<option value="garcon">Hommes</option>
-					</select>
+			<!-- Compteurs de la séance -->
+			<div class="mb-4 grid grid-cols-3 gap-4">
+				<div class="rounded-2xl border-l-4 border-l-green-500 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">Présents</p><p class="font-clash text-2xl text-green-700">{psDay.present}</p></div>
+				<div class="rounded-2xl border-l-4 border-l-red-400 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">Absents</p><p class="font-clash text-2xl text-red-600">{psDay.absent}</p></div>
+				<div class="rounded-2xl border-l-4 border-l-gray-300 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">À renseigner</p><p class="font-clash text-2xl text-dark">{psDay.unset}</p></div>
+			</div>
+
+			<div class="rounded-2xl bg-white p-5 shadow-sm">
+				<!-- Actions en un clic pour tous les joueurs filtrés -->
+				<div class="mb-4 flex flex-wrap gap-2">
+					<form method="POST" action="?/savePresences" use:enhance={psKeep}>
+						<input type="hidden" name="date" value={presDate} />
+						{#each psPlayers as p (p.id)}<input type="hidden" name={`s_${p.id}`} value="present" />{/each}
+						<button class="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">✓ Tous présents</button>
+					</form>
+					<form method="POST" action="?/savePresences" use:enhance={psKeep}>
+						<input type="hidden" name="date" value={presDate} />
+						{#each psPlayers as p (p.id)}<input type="hidden" name={`s_${p.id}`} value="absent" />{/each}
+						<button class="rounded-xl bg-[#f4f5f7] px-4 py-2 text-sm font-medium text-dark-accent hover:bg-red-50 hover:text-red-600">✕ Tous absents</button>
+					</form>
+					<form method="POST" action="?/savePresences" use:enhance={psKeep}>
+						<input type="hidden" name="date" value={presDate} />
+						{#each psPlayers as p (p.id)}<input type="hidden" name={`s_${p.id}`} value="clear" />{/each}
+						<button class="rounded-xl bg-[#f4f5f7] px-4 py-2 text-sm font-medium text-dark-accent hover:bg-[#eceef1]">↺ Tout effacer</button>
+					</form>
 				</div>
 
-				<div class="flex items-center gap-2 print:hidden">
+				<div class="flex flex-col gap-2">
+					{#each psPaged as p (p.id)}
+						{@const st = p.presences?.[presDate] ?? ''}
+						<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-l-4 px-4 py-2 {st === 'present' ? 'border-l-green-500 bg-green-50/60' : st === 'absent' ? 'border-l-red-400 bg-red-50/60' : 'border-l-gray-300 bg-[#f4f5f7]/60'}">
+							<div class="flex min-w-0 items-center gap-3">
+								<span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dark text-xs font-semibold text-white">{initials(p)}</span>
+								<div class="min-w-0">
+									<p class="truncate font-medium text-dark">{p.first_name} {p.last_name}</p>
+									<div class="mt-0.5 flex items-center gap-1" title="5 dernières séances">
+										{#each psLast(p) as v}
+											<span class="h-2 w-2 rounded-full {v === 'present' ? 'bg-green-500' : v === 'absent' ? 'bg-red-400' : 'bg-gray-300'}"></span>
+										{/each}
+									</div>
+								</div>
+							</div>
+							<form method="POST" action="?/savePresences" use:enhance={psKeep} class="flex w-full gap-1.5 sm:w-auto">
+								<input type="hidden" name="date" value={presDate} />
+								<button name={`s_${p.id}`} value={st === 'present' ? 'clear' : 'present'} title={st === 'present' ? 'Annuler' : undefined} class="flex-1 rounded-xl px-5 py-2.5 text-sm font-medium transition-colors sm:flex-none {st === 'present' ? 'bg-green-600 text-white shadow-sm' : 'bg-white text-dark-accent ring-1 ring-dark-accent/10 hover:bg-green-50 hover:text-green-700'}">{st === 'present' ? '✓ Présent  ✕' : '✓ Présent'}</button>
+								<button name={`s_${p.id}`} value={st === 'absent' ? 'clear' : 'absent'} title={st === 'absent' ? 'Annuler' : undefined} class="flex-1 rounded-xl px-5 py-2.5 text-sm font-medium transition-colors sm:flex-none {st === 'absent' ? 'bg-red-500 text-white shadow-sm' : 'bg-white text-dark-accent ring-1 ring-dark-accent/10 hover:bg-red-50 hover:text-red-600'}">{st === 'absent' ? '✕ Absent  ✕' : '✕ Absent'}</button>
+							</form>
+						</div>
+					{:else}
+						<p class="rounded-xl bg-[#f4f5f7] px-4 py-6 text-center text-sm text-dark-accent">Aucun joueur.</p>
+					{/each}
+				</div>
+
+				{#if psPageCount > 1}
+					<div class="mt-4 flex items-center justify-between text-sm text-dark-accent">
+						<span>{(psPage - 1) * PS_SIZE + 1}–{Math.min(psPage * PS_SIZE, psPlayers.length)} sur {psPlayers.length}</span>
+						<div class="flex gap-1">
+							<button disabled={psPage === 1} onclick={() => psPage--} class="rounded-lg bg-[#f4f5f7] px-3 py-1.5 disabled:opacity-40">←</button>
+							{#each Array(psPageCount) as _, i}
+								<button onclick={() => (psPage = i + 1)} class="rounded-lg px-3 py-1.5 {psPage === i + 1 ? 'bg-dark text-white' : 'bg-[#f4f5f7]'}">{i + 1}</button>
+							{/each}
+							<button disabled={psPage === psPageCount} onclick={() => psPage++} class="rounded-lg bg-[#f4f5f7] px-3 py-1.5 disabled:opacity-40">→</button>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{:else}
+			<!-- Historique : semaine / mois / année -->
+			<div class="mb-4 flex flex-wrap items-center gap-3">
+				
+				<div class="flex w-full items-center gap-2 rounded-2xl bg-white p-1.5 shadow-sm sm:w-auto">
+					<button type="button" onclick={() => psShiftPeriod(-1)} class="flex h-9 w-9 items-center justify-center rounded-xl text-dark-accent hover:bg-[#f4f5f7]" aria-label="Période précédente">←</button>
+					<span class="font-clash min-w-0 flex-1 px-1 text-center text-sm text-dark sm:min-w-56 sm:text-base">{psRange.label}</span>
+					<button type="button" onclick={() => psShiftPeriod(1)} class="flex h-9 w-9 items-center justify-center rounded-xl text-dark-accent hover:bg-[#f4f5f7]" aria-label="Période suivante">→</button>
+				</div>
+				<button type="button" onclick={() => (psRef = new Date())} class="rounded-xl bg-white px-4 py-2 text-sm text-dark-accent shadow-sm hover:text-dark">Aujourd'hui</button>
+			</div>
+
+			<!-- Résumé compact : diagramme + graphique côte à côte -->
+			<div class="mb-4 grid gap-4 lg:grid-cols-[320px_1fr]">
+				<div class="flex items-center gap-5 rounded-2xl bg-white p-5 shadow-sm">
+					<div class="relative h-28 w-28 shrink-0">
+						<svg viewBox="0 0 100 100" class="h-full w-full -rotate-90">
+							<circle cx="50" cy="50" r="40" fill="none" stroke="#fee2e2" stroke-width="14" />
+							<circle cx="50" cy="50" r="40" fill="none" stroke="#22c55e" stroke-width="14" stroke-linecap="round"
+								stroke-dasharray="{(psTotalRate ?? 0) * 2.513} 251.3" />
+						</svg>
+						<div class="absolute inset-0 flex flex-col items-center justify-center">
+							<span class="font-clash text-2xl text-dark">{psTotalRate === null ? '—' : `${psTotalRate}%`}</span>
+							<span class="text-[10px] text-dark-accent">présence</span>
+						</div>
+					</div>
+					<div class="space-y-2 text-sm">
+						<p class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-green-500"></span><b class="text-dark">{psTotalPresent}</b> <span class="text-dark-accent">présences</span></p>
+						<p class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-red-200"></span><b class="text-dark">{psTotalAll - psTotalPresent}</b> <span class="text-dark-accent">absences</span></p>
+						<p class="text-xs text-dark-accent">{psSessions.length} séance(s) · {psHistRows.length} joueurs</p>
+					</div>
+				</div>
+
+				<div class="rounded-2xl bg-white p-5 shadow-sm">
+					{#if psBars.length === 0 || psBars.every((b: any) => b.total === 0)}
+						<div class="flex h-28 items-center justify-center text-sm text-dark-accent">Aucune séance sur cette période.</div>
+					{:else}
+						{@const max = Math.max(1, ...psBars.map((b: any) => Math.max(b.value, b.total)))}
+						<div class="flex h-32 items-end gap-2">
+							{#each psBars as b}
+								<div class="flex min-w-0 flex-1 flex-col items-center justify-end gap-1" title="{b.value} présents sur {b.total}">
+									<span class="text-[11px] font-medium text-dark">{b.value}</span>
+									<div class="flex w-full max-w-10 flex-col justify-end overflow-hidden rounded-t-md bg-red-100" style="height: {Math.max(4, (Math.max(b.total, b.value) / max) * 80)}px">
+										<div class="w-full bg-green-500" style="height: {b.total ? (b.value / Math.max(b.total, b.value)) * 100 : 0}%"></div>
+									</div>
+									<span class="truncate text-[10px] text-dark-accent">{b.label}</span>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			</div>
+
+			<div class="rounded-2xl bg-white p-5 shadow-sm">
+				<div class="overflow-x-auto">
+					<table class="w-full text-left text-sm">
+						<thead class="border-b border-dark-accent/10 text-xs text-dark-accent">
+							<tr>
+								<th class="sticky left-0 bg-white px-3 py-3 uppercase">Joueur</th>
+								{#if psPeriod === 'annee'}
+									{#each psMonths as m, i}<th class="px-2 py-3 text-center font-medium">{MONTH_LABELS[i].slice(0, 3)}</th>{/each}
+								{:else}
+									{#each psSessions as d}<th class="whitespace-nowrap px-2 py-3 text-center font-medium">{shortDate(d)}</th>{/each}
+								{/if}
+								<th class="px-3 py-3 text-right uppercase">Taux</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each psHistPaged as r (r.p.id)}
+								<tr class="border-b border-dark-accent/5 last:border-0">
+									<td class="sticky left-0 whitespace-nowrap bg-white px-3 py-2 font-medium text-dark">{r.p.first_name} {r.p.last_name}</td>
+									{#if psPeriod === 'annee'}
+										{#each r.months as c}
+											<td class="px-1 py-2 text-center">
+												<span class="inline-flex min-w-9 justify-center rounded-lg px-1.5 py-1 text-xs font-medium {rateTone(c.rate)}" title="{c.pr} / {c.tot}">{c.rate === null ? '·' : `${c.rate}%`}</span>
+											</td>
+										{/each}
+									{:else}
+										{#each r.inRange as v}
+											<td class="px-2 py-2 text-center">
+												{#if v === 'present'}<span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-green-100 text-xs text-green-700">✓</span>
+												{:else if v === 'absent'}<span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-100 text-xs text-red-600">✕</span>
+												{:else}<span class="text-dark-accent/30">·</span>{/if}
+											</td>
+										{/each}
+									{/if}
+									<td class="px-3 py-2 text-right"><span class="rounded-full px-3 py-1 text-xs font-semibold {rateTone(r.rate)}">{r.rate === null ? '—' : `${r.rate}%`}</span></td>
+								</tr>
+							{:else}
+								<tr><td class="px-3 py-8 text-center text-dark-accent">Aucun joueur.</td></tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+				{#if psPeriod !== 'annee' && psSessions.length === 0}
+					<p class="mt-4 rounded-xl bg-[#f4f5f7] px-4 py-3 text-center text-sm text-dark-accent">Aucune séance sur cette période.</p>
+				{/if}
+				{#if psHistPageCount > 1}
+					<div class="mt-4 flex items-center justify-between text-sm text-dark-accent">
+						<span>{(psHistPage - 1) * PS_SIZE + 1}–{Math.min(psHistPage * PS_SIZE, psHistRows.length)} sur {psHistRows.length}</span>
+						<div class="flex gap-1">
+							<button disabled={psHistPage === 1} onclick={() => psHistPage--} class="rounded-lg bg-[#f4f5f7] px-3 py-1.5 disabled:opacity-40">←</button>
+							{#each Array(psHistPageCount) as _, i}
+								<button onclick={() => (psHistPage = i + 1)} class="rounded-lg px-3 py-1.5 {psHistPage === i + 1 ? 'bg-dark text-white' : 'bg-[#f4f5f7]'}">{i + 1}</button>
+							{/each}
+							<button disabled={psHistPage === psHistPageCount} onclick={() => psHistPage++} class="rounded-lg bg-[#f4f5f7] px-3 py-1.5 disabled:opacity-40">→</button>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/if}
+	{:else if viewMode === 'paiements'}
+		<div class="mb-4 flex w-fit max-w-full overflow-x-auto rounded-full bg-white p-1 shadow-sm">
+			{#each [['mois', 'Par mois'], ['annee', 'Année']] as [k, l]}
+				<button type="button" onclick={() => (payMode = k as any)} class="whitespace-nowrap rounded-full px-5 py-2 text-sm font-medium {payMode === k ? 'bg-dark text-white' : 'text-dark-accent'}">{l}</button>
+			{/each}
+		</div>
+	{#if payMode === 'mois'}
+		<!-- Sélecteur de mois -->
+		<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+			<div class="flex items-center gap-2 rounded-2xl bg-white p-1.5 shadow-sm">
+				<button type="button" onclick={() => shiftPayMonth(-1)} class="flex h-9 w-9 items-center justify-center rounded-xl text-dark-accent hover:bg-[#f4f5f7]" aria-label="Mois précédent">←</button>
+				<span class="font-clash min-w-32 flex-1 text-center text-base text-dark sm:min-w-40">{monthLabel(payMonth)}</span>
+				<button type="button" onclick={() => shiftPayMonth(1)} class="flex h-9 w-9 items-center justify-center rounded-xl text-dark-accent hover:bg-[#f4f5f7]" aria-label="Mois suivant">→</button>
+			</div>
+			{#if payMonth !== currentMonth}
+				<button type="button" onclick={() => (payMonth = currentMonth)} class="rounded-xl bg-white px-4 py-2 text-sm text-dark-accent shadow-sm hover:text-dark">Revenir au mois en cours</button>
+			{/if}
+		</div>
+
+		<!-- Résumé du mois -->
+		<div class="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+			<div class="rounded-2xl border-l-4 border-l-green-500 bg-white p-5 shadow-sm">
+				<p class="text-xs font-medium text-dark-accent">Encaissé ce mois</p>
+				<p class="font-clash text-2xl text-dark">{payCollected} €</p>
+			</div>
+			<div class="rounded-2xl border-l-4 border-l-amber-400 bg-white p-5 shadow-sm">
+				<p class="text-xs font-medium text-dark-accent">Reste à encaisser</p>
+				<p class="font-clash text-2xl text-dark">{payExpected - payCollected} €</p>
+				<p class="text-xs text-dark-accent">sur {payExpected} € attendus</p>
+			</div>
+			<div class="rounded-2xl border-l-4 border-l-blue-500 bg-white p-5 shadow-sm">
+				<p class="text-xs font-medium text-dark-accent">Mensualités payées</p>
+				<p class="font-clash text-2xl text-dark">{payPaidCount} / {payRows.length}</p>
+				<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-[#f4f5f7]">
+					<div class="h-full rounded-full bg-blue-500" style="width: {pct(payPaidCount, payRows.length)}%"></div>
+				</div>
+			</div>
+			<div class="rounded-2xl border-l-4 border-l-purple-400 bg-white p-5 shadow-sm">
+				<p class="text-xs font-medium text-dark-accent">Cotisations annuelles ({FEES.annual} €)</p>
+				<p class="font-clash text-2xl text-dark">{payAnnualCount} / {payRows.length}</p>
+				<p class="text-xs text-dark-accent">Total encaissé tous mois : {totalCollected} €</p>
+			</div>
+		</div>
+
+		<div class="rounded-2xl bg-white p-5 shadow-sm">
+
+			<div class="mb-4 flex flex-wrap items-center gap-3">
+				<FilterMenu
+					items={[{ label: 'Paiement du mois', value: payFilter, def: 'all', options: [['all', 'Tous', payRows.length], ['unpaid', 'Impayés', payRows.length - payPaidCount], ['paid', 'Payés', payPaidCount]], set: (v: string) => (payFilter = v as any) }]}
+				/>
+				<input bind:value={paySearch} placeholder="Rechercher un joueur…" class="min-w-52 flex-1 rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-4 py-2 text-sm" />
+			</div>
+
+			{#if memberPlayers.length === 0}
+				<p class="rounded-xl bg-[#f4f5f7] px-4 py-3 text-sm text-dark-accent">Aucun joueur n'a encore complété son dossier.</p>
+			{:else}
+				<div class="overflow-x-auto">
+					<table class="w-full text-left text-sm">
+						<thead class="border-b border-dark-accent/10 text-xs uppercase text-dark-accent">
+							<tr>
+								<th class="px-3 py-3">Joueur</th>
+								<th class="px-3 py-3">Mensualité {monthLabel(payMonth)}</th>
+								<th class="px-3 py-3">Cotisation annuelle {new Date().getFullYear()}</th>
+								<th class="hidden px-3 py-3 lg:table-cell">Total versé</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each payPaged as r (r.p.id)}
+								<tr class="border-b border-dark-accent/5 last:border-0">
+									<td class="border-l-4 px-3 py-3 {r.month ? 'border-l-green-500' : 'border-l-amber-400'}">
+										<div class="flex items-center gap-3">
+											<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(r.p)}</span>
+											<div>
+												<p class="font-medium text-dark">{r.p.first_name} {r.p.last_name}</p>
+												<p class="text-xs text-dark-accent">{r.fee} € / mois</p>
+											</div>
+										</div>
+									</td>
+									<td class="px-3 py-3">
+										<form method="POST" action={r.month ? '?/deletePayment' : '?/savePayments'} use:enhance class="flex items-center gap-3">
+											<input type="hidden" name="id" value={r.p.id} />
+											{#if r.month}
+												<input type="hidden" name="entry" value={r.month.id} />
+											{:else}
+												<input type="hidden" name="paid" value={r.p.id} />
+												<input type="hidden" name="type" value="mensuel" />
+												<input type="hidden" name="mois" value={payMonth} />
+												<input type="hidden" name="date" value={payToday} />
+											{/if}
+											<input
+												type="checkbox"
+												checked={!!r.month}
+												onchange={(e) => {
+													if (r.month && !confirm('Annuler ce paiement ?')) { e.currentTarget.checked = true; return; }
+													e.currentTarget.form?.requestSubmit();
+												}}
+												class="h-5 w-5 cursor-pointer accent-green-600"
+												aria-label="Mensualité {monthLabel(payMonth)} payée"
+											/>
+											{#if r.month}
+												<span class="text-xs"><b class="text-green-700">Payé · {r.month.montant} €</b><br /><span class="text-dark-accent">le {new Date(r.month.date).toLocaleDateString('fr-BE')}</span></span>
+											{:else}
+												<span class="text-xs text-amber-700">À payer · {r.fee} €</span>
+											{/if}
+										</form>
+									</td>
+									<td class="px-3 py-3">
+										<form method="POST" action={r.annual ? '?/deletePayment' : '?/savePayments'} use:enhance class="flex items-center gap-3">
+											<input type="hidden" name="id" value={r.p.id} />
+											{#if r.annual}
+												<input type="hidden" name="entry" value={r.annual.id} />
+											{:else}
+												<input type="hidden" name="paid" value={r.p.id} />
+												<input type="hidden" name="type" value="annuel" />
+												<input type="hidden" name="date" value={payToday} />
+											{/if}
+											<input
+												type="checkbox"
+												checked={!!r.annual}
+												onchange={(e) => {
+													if (r.annual && !confirm('Annuler la cotisation annuelle ?')) { e.currentTarget.checked = true; return; }
+													e.currentTarget.form?.requestSubmit();
+												}}
+												class="h-5 w-5 cursor-pointer accent-purple-600"
+												aria-label="Cotisation annuelle payée"
+											/>
+											{#if r.annual}
+												<span class="text-xs"><b class="text-green-700">Payée · {r.annual.montant} €</b><br /><span class="text-dark-accent">le {new Date(r.annual.date).toLocaleDateString('fr-BE')}</span></span>
+											{:else}
+												<span class="text-xs text-dark-accent">Non payée</span>
+											{/if}
+										</form>
+									</td>
+									<td class="hidden px-3 py-3 text-dark lg:table-cell">{payTotal(r.p)} €</td>
+								</tr>
+							{:else}
+								<tr><td colspan="4" class="px-3 py-8 text-center text-dark-accent">Aucun joueur.</td></tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+
+				{#if payPageCount > 1}
+					<div class="mt-4 flex items-center justify-between text-sm text-dark-accent">
+						<span>{(payPage - 1) * PAY_SIZE + 1}–{Math.min(payPage * PAY_SIZE, payFiltered.length)} sur {payFiltered.length}</span>
+						<div class="flex gap-1">
+							<button disabled={payPage === 1} onclick={() => payPage--} class="rounded-lg bg-[#f4f5f7] px-3 py-1.5 disabled:opacity-40">←</button>
+							{#each Array(payPageCount) as _, i}
+								<button onclick={() => (payPage = i + 1)} class="rounded-lg px-3 py-1.5 {payPage === i + 1 ? 'bg-dark text-white' : 'bg-[#f4f5f7]'}">{i + 1}</button>
+							{/each}
+							<button disabled={payPage === payPageCount} onclick={() => payPage++} class="rounded-lg bg-[#f4f5f7] px-3 py-1.5 disabled:opacity-40">→</button>
+						</div>
+					</div>
+				{/if}
+			{/if}
+		</div>
+	{:else}
+		<div class="mb-4 flex items-center gap-2 rounded-2xl bg-white p-1.5 shadow-sm w-fit">
+			<button type="button" onclick={() => histYear--} class="flex h-9 w-9 items-center justify-center rounded-xl text-dark-accent hover:bg-[#f4f5f7]" aria-label="Année précédente">←</button>
+			<span class="font-clash min-w-24 text-center text-base text-dark">{histYear}</span>
+			<button type="button" onclick={() => histYear++} class="flex h-9 w-9 items-center justify-center rounded-xl text-dark-accent hover:bg-[#f4f5f7]" aria-label="Année suivante">→</button>
+		</div>
+		<div class="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
+			<div class="rounded-2xl border-l-4 border-l-green-500 bg-white p-5 shadow-sm"><p class="text-xs font-medium text-dark-accent">Encaissé en {histYear}</p><p class="font-clash text-2xl text-dark">{yearTotal} €</p></div>
+			<div class="rounded-2xl border-l-4 border-l-blue-500 bg-white p-5 shadow-sm"><p class="text-xs font-medium text-dark-accent">Mensualités payées</p><p class="font-clash text-2xl text-dark">{yearMonthTotals.reduce((a: number, b: number) => a + b, 0)}</p></div>
+			<div class="rounded-2xl border-l-4 border-l-purple-400 bg-white p-5 shadow-sm"><p class="text-xs font-medium text-dark-accent">Cotisations annuelles</p><p class="font-clash text-2xl text-dark">{yearRows.filter((r: any) => r.annual).length} / {yearRows.length}</p></div>
+		</div>
+		<div class="rounded-2xl bg-white p-5 shadow-sm">
+			<div class="overflow-x-auto">
+				<table class="w-full text-left text-sm">
+					<thead class="border-b border-dark-accent/10 text-xs text-dark-accent">
+						<tr>
+							<th class="sticky left-0 bg-white px-3 py-3 uppercase">Joueur</th>
+							{#each histMonths as k}
+								<th class="px-2 py-3 text-center font-medium">{MONTH_LABELS[Number(k.slice(5)) - 1].slice(0, 3)}</th>
+							{/each}
+							<th class="px-3 py-3 text-center uppercase">Annuelle</th>
+							<th class="px-3 py-3 text-right uppercase">Total</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each yearPaged as r (r.p.id)}
+							<tr class="border-b border-dark-accent/5">
+								<td class="sticky left-0 whitespace-nowrap bg-white px-3 py-3 font-medium text-dark">{r.p.first_name} {r.p.last_name}</td>
+								{#each r.cells as c, i}
+									<td class="px-2 py-3 text-center">
+										{#if c}<span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-xs text-green-700" title="{c.montant} € · {new Date(c.date).toLocaleDateString('fr-BE')}">✓</span>
+										{:else if histMonths[i] < currentMonth}<span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-xs text-amber-700" title="Impayé">!</span>
+										{:else}<span class="text-dark-accent/30">·</span>{/if}
+									</td>
+								{/each}
+								<td class="px-3 py-3 text-center">{#if r.annual}<span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-xs text-purple-700" title="{r.annual.montant} €">✓</span>{:else}<span class="text-dark-accent/30">·</span>{/if}</td>
+								<td class="px-3 py-3 text-right font-medium text-dark">{r.total} €</td>
+							</tr>
+						{:else}
+							<tr><td class="px-3 py-8 text-center text-dark-accent">Aucun joueur.</td></tr>
+						{/each}
+					</tbody>
+					<tfoot class="border-t border-dark-accent/10 text-xs text-dark-accent">
+						<tr>
+							<td class="sticky left-0 bg-white px-3 py-3 font-medium">Payés / mois</td>
+							{#each yearMonthTotals as n}<td class="px-2 py-3 text-center">{n}</td>{/each}
+							<td></td><td class="px-3 py-3 text-right font-semibold text-dark">{yearTotal} €</td>
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+			{#if yearPageCount > 1}
+				<div class="mt-4 flex items-center justify-between text-sm text-dark-accent">
+					<span>{(histPayPage - 1) * 10 + 1}–{Math.min(histPayPage * 10, yearRows.length)} sur {yearRows.length}</span>
+					<div class="flex gap-1">
+						<button disabled={histPayPage === 1} onclick={() => histPayPage--} class="rounded-lg bg-[#f4f5f7] px-3 py-1.5 disabled:opacity-40">←</button>
+						{#each Array(yearPageCount) as _, i}
+							<button onclick={() => (histPayPage = i + 1)} class="rounded-lg px-3 py-1.5 {histPayPage === i + 1 ? 'bg-dark text-white' : 'bg-[#f4f5f7]'}">{i + 1}</button>
+						{/each}
+						<button disabled={histPayPage === yearPageCount} onclick={() => histPayPage++} class="rounded-lg bg-[#f4f5f7] px-3 py-1.5 disabled:opacity-40">→</button>
+					</div>
+				</div>
+			{/if}
+		</div>
+	{/if}
+	{:else if viewMode === 'stats'}
+		<div class="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+			<div class="rounded-2xl border-l-4 border-l-blue-500 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">Joueurs</p><p class="font-clash text-2xl text-dark">{statsPlayers.length}</p></div>
+			<div class="rounded-2xl border-l-4 border-l-green-500 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">Buts</p><p class="font-clash text-2xl text-dark">{statsGoals}</p></div>
+			<div class="rounded-2xl border-l-4 border-l-purple-400 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">Passes décisives</p><p class="font-clash text-2xl text-dark">{statsAssists}</p></div>
+			<div class="rounded-2xl border-l-4 border-l-gray-300 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">Hors site (privé)</p><p class="font-clash text-2xl text-dark">{statsMissing}</p></div>
+		</div>
+
+		<div class="mb-4 flex flex-wrap items-center gap-3">
+			<FilterMenu
+				items={[{ label: 'Genre', value: genderFilter, def: 'all', options: [['all', 'Tous'], ['fille', 'Filles'], ['garcon', 'Garçons']], set: (v: string) => (genderFilter = v as any) }]}
+			/>
+			<input type="search" bind:value={statsSearch} placeholder="Rechercher un joueur…" aria-label="Rechercher un joueur" class="min-w-52 flex-1 rounded-xl border border-dark-accent/10 bg-white px-4 py-2 text-sm" />
+		</div>
+
+		<div class="flex flex-col gap-2">
+			{#each statsPaged as player (player.id)}
+				{@const sp = player.siteProfile ?? player.stats ?? {}}
+				{@const footVal = sp.foot ?? ({ droit: 'droit', gauche: 'gauche', les_deux: 'les deux' } as Record<string, string>)[player.dossier?.pied] ?? ''}
+				{@const heightVal = sp.height ?? player.dossier?.taille ?? ''}
+					<form
+						method="POST"
+						action="?/updateStats"
+						use:enhance={() => {
+							return async ({ result, update }) => {
+								await update({ reset: false });
+								if (result.type === 'success') {
+									savedId = player.id;
+									setTimeout(() => (savedId = null), 2000);
+								}
+							};
+						}}
+						class="grid grid-cols-2 items-end gap-3 rounded-2xl border-l-4 {player.siteProfile ? 'border-l-purple-400' : 'border-l-gray-300'} bg-white px-4 py-2.5 shadow-sm md:grid-cols-[1.6fr_repeat(5,1fr)_auto]"
+					>
+						<input type="hidden" name="profile_id" value={player.siteProfile?.id ?? ''} />
+						<input type="hidden" name="id" value={player.id} />
+						<div class="col-span-2 flex items-center gap-3 md:col-span-1">
+							<span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dark text-xs font-semibold text-white">{initials(player)}</span>
+							<div class="min-w-0">
+								<p class="truncate font-medium text-dark">{player.first_name} {player.last_name}</p>
+								<p class="truncate text-xs text-dark-accent">{player.preferred_position}{player.siteProfile ? '' : ' · privé'}</p>
+							</div>
+						</div>
+						<label class="text-[11px] text-dark-accent">Taille (cm)
+							<input type="number" name="height" min="100" max="230" value={heightVal} class="mt-0.5 w-full rounded-lg border border-dark-accent/15 bg-[#f4f5f7] px-2.5 py-1.5 text-sm text-dark" />
+						</label>
+						<label class="text-[11px] text-dark-accent">Pied fort
+							<select name="foot" value={footVal} class="mt-0.5 w-full rounded-lg border border-dark-accent/15 bg-[#f4f5f7] px-2.5 py-1.5 text-sm text-dark">
+								<option value="">—</option>
+								<option value="droit">Droit</option>
+								<option value="gauche">Gauche</option>
+								<option value="les deux">Les deux</option>
+								{#if footVal && !['droit', 'gauche', 'les deux'].includes(footVal)}
+									<option value={footVal}>{footVal}</option>
+								{/if}
+							</select>
+						</label>
+						<label class="text-[11px] text-dark-accent">Matchs
+							<input type="number" name="games" min="0" value={sp.games ?? ''} class="mt-0.5 w-full rounded-lg border border-dark-accent/15 bg-[#f4f5f7] px-2.5 py-1.5 text-sm text-dark" />
+						</label>
+						<label class="text-[11px] text-dark-accent">Buts
+							<input type="number" name="goals" min="0" value={sp.goals ?? ''} class="mt-0.5 w-full rounded-lg border border-dark-accent/15 bg-[#f4f5f7] px-2.5 py-1.5 text-sm text-dark" />
+						</label>
+						<label class="text-[11px] text-dark-accent">Passes
+							<input type="number" name="assists" min="0" value={sp.assists ?? ''} class="mt-0.5 w-full rounded-lg border border-dark-accent/15 bg-[#f4f5f7] px-2.5 py-1.5 text-sm text-dark" />
+						</label>
+						<button type="submit" class="col-span-2 rounded-xl px-4 py-2 text-xs font-medium md:col-span-1 {savedId === player.id ? 'bg-green-600 text-white' : 'bg-dark text-white hover:opacity-90'}">
+							{savedId === player.id ? 'Enregistré ✓' : 'Enregistrer'}
+						</button>
+					</form>
+			{:else}
+				<p class="rounded-2xl bg-white px-4 py-8 text-center text-sm text-dark-accent shadow-sm">Aucun joueur.</p>
+			{/each}
+		</div>
+
+		{#if statsPageCount > 1}
+			<div class="mt-4 flex items-center justify-between text-sm text-dark-accent">
+				<span>{(statsPage - 1) * 10 + 1}–{Math.min(statsPage * 10, statsPlayers.length)} sur {statsPlayers.length}</span>
+				<div class="flex gap-1">
+					<button disabled={statsPage === 1} onclick={() => statsPage--} class="rounded-lg bg-white px-3 py-1.5 disabled:opacity-40">←</button>
+					{#each Array(statsPageCount) as _, i}
+						<button onclick={() => (statsPage = i + 1)} class="rounded-lg px-3 py-1.5 {statsPage === i + 1 ? 'bg-dark text-white' : 'bg-white'}">{i + 1}</button>
+					{/each}
+					<button disabled={statsPage === statsPageCount} onclick={() => statsPage++} class="rounded-lg bg-white px-3 py-1.5 disabled:opacity-40">→</button>
+				</div>
+			</div>
+		{/if}
+	{:else}
+		<div class="print:bg-transparent">
+			<div class="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4 print:hidden">
+				<div class="rounded-2xl border-l-4 border-l-blue-500 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">Inscrits</p><p class="font-clash text-2xl text-dark">{lsCounts.total}</p></div>
+				<div class="rounded-2xl border-l-4 border-l-amber-400 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">À traiter</p><p class="font-clash text-2xl text-dark">{lsCounts.pending}</p></div>
+				<div class="rounded-2xl border-l-4 border-l-green-500 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">Venus</p><p class="font-clash text-2xl text-green-700">{lsCounts.venu}</p></div>
+				<div class="rounded-2xl border-l-4 border-l-red-400 bg-white px-4 py-3 shadow-sm"><p class="text-xs text-dark-accent">Pas venus</p><p class="font-clash text-2xl text-red-600">{lsCounts.pasVenu}</p></div>
+			</div>
+
+			<div class="mb-4 flex flex-col gap-3 print:hidden">
+				<div class="flex flex-wrap items-center gap-3">
+					<FilterMenu
+						items={[
+							...(viewMode === 'talent_days'
+								? [{ label: 'Édition', value: tdTab, def: 'current', options: [['current', 'Édition en cours'], ['history', 'Historique']], set: (v: string) => (tdTab = v as any) }]
+								: []),
+							{ label: 'Statut', value: lsStatus, def: 'all', options: [['all', 'Tous', lsCounts.total], ['pending', 'À traiter', lsCounts.pending], ['rejected', 'Refusés', lsCounts.rejected]], set: (v: string) => (lsStatus = v as any) },
+							{ label: 'Venue', value: presenceFilter, def: 'all', options: [['all', 'Tous'], ['venu', 'Venus'], ['pas_venu', 'Pas venus'], ['inconnu', 'Non renseignés']], set: (v: string) => (presenceFilter = v as any) },
+							{ label: 'Genre', value: genderFilter, def: 'all', options: [['all', 'Tous'], ['fille', 'Filles'], ['garcon', 'Garçons']], set: (v: string) => (genderFilter = v as any) }
+						]}
+					/>
+				</div>
+				<div class="flex flex-wrap items-center gap-3">
+					<input bind:value={lsSearch} placeholder="Rechercher un nom ou un email…" class="min-w-60 flex-1 rounded-xl border border-dark-accent/10 bg-white px-4 py-2 text-sm" />
+				<div class="flex flex-wrap items-center gap-2 print:hidden">
 						{#if viewMode === 'inscrits'}
 							<form
 								method="POST"
@@ -1539,6 +1823,7 @@
 					</button>
 				</div>
 			</div>
+			</div>
 
 			{#if data.loadError}
 				<p class="mb-6 rounded-xl bg-red-100 px-4 py-3 text-sm text-red-700">
@@ -1546,95 +1831,68 @@
 				</p>
 			{:else if filteredPlayers.length === 0}
 				<p class="rounded-xl bg-[#f4f5f7] px-4 py-3 text-sm text-dark-accent">
-					Aucune entrée dans cette liste.
+					{viewMode === 'talent_days' && tdArchived && tdTab === 'current'
+						? 'Rien pour la prochaine édition — voir Historique.'
+						: 'Aucune entrée dans cette liste.'}
 				</p>
 			{/if}
 
-			<!-- Vue cartes : mobile -->
-			<div class="flex flex-col gap-4 md:hidden print:hidden">
-				{#each filteredPlayers as player (player.id)}
-					<div
-						class="rounded-xl border border-dark-accent/10 p-4 transition-shadow hover:shadow-sm"
-					>
-						<div class="mb-2 flex items-start justify-between gap-2">
-							<div class="flex items-center gap-3">
-								<span
-									class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
-								>
-									{initials(player)}
-								</span>
-								<div>
-									<p class="font-medium text-dark">{player.first_name} {player.last_name}</p>
-									<p class="text-xs text-dark-accent">{player.email}</p>
-									{@render resendButton(player)}{@render reminderButton(player)}
-									{#if cleanInstagram(player.instagram)}
-										<a
-											href={`https://instagram.com/${cleanInstagram(player.instagram)}`}
-											target="_blank"
-											rel="noopener noreferrer"
-											class="text-xs font-medium text-primary underline"
-											>@{cleanInstagram(player.instagram)}</a
-										>
-									{/if}
-								</div>
+			<!-- Liste (écran) -->
+			<div class="flex flex-col gap-2 print:hidden">
+				{#each pagedPlayers as player (player.id)}
+					{@const age = ageOf(player.birth_date)}
+					<div class="rounded-2xl border-l-4 bg-white shadow-sm {statusBar(player.status)}">
+						<div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+							<span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dark text-xs font-semibold text-white">{initials(player)}</span>
+							<div class="min-w-0 flex-1 basis-52">
+								<p class="truncate font-medium text-dark">{player.first_name} {player.last_name}</p>
+								<p class="truncate text-xs text-dark-accent">{player.email}{@render resendButton(player)}{@render reminderButton(player)}</p>
 							</div>
-							<span class="shrink-0 rounded-full bg-[#f4f5f7] px-2 py-1 text-xs text-dark-accent">
-								{genderLabel(player.gender)}
-							</span>
+							<div class="hidden min-w-36 text-xs text-dark-accent lg:block">
+								<p class="text-dark">{player.preferred_position ?? '—'}{age ? ` · ${age} ans` : ''}</p>
+								<p class="truncate">{player.current_club ?? '—'}</p>
+							</div>
+							<div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+								<div class="min-w-36 flex-1 sm:w-40 sm:flex-none">{@render statusSelect(player)}</div>
+								<div class="min-w-32 flex-1 sm:w-36 sm:flex-none">{@render venueSelect(player)}</div>
+								<button
+									type="button"
+									onclick={() => (expandedId = expandedId === player.id ? null : player.id)}
+									class="rounded-xl bg-[#f4f5f7] px-3 py-2 text-xs text-dark-accent hover:bg-[#eceef1]"
+									aria-expanded={expandedId === player.id}
+								>{expandedId === player.id ? 'Fermer' : 'Détails'}</button>
+							</div>
 						</div>
 
-						<div class="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-dark-accent">
-							<span
-								>Naissance : {@render valueOrMissing(
-									player.birth_date ? formatDate(player.birth_date) : null
-								)}</span
-							>
-							<span>Poste : {@render valueOrMissing(player.preferred_position)}</span>
-							<span>Tél : {@render valueOrMissing(player.phone)}</span>
-							<span>Club : {@render valueOrMissing(player.current_club)}</span>
-							<span
-								>Division : {@render valueOrMissing(
-									player.division ? divisionLabel(player.division) : null
-								)}</span
-							>
-							{#if player.type === 'academie' || player.status === 'accepted'}
-								<span>Lieu de naissance : {@render valueOrMissing(player.birth_place)}</span>
-								<span>Nationalité : {@render valueOrMissing(player.nationality)}</span>
-								<span class="col-span-2">Adresse : {@render valueOrMissing(player.address)}</span>
-								<span>Code postal : {@render valueOrMissing(player.postal_code)}</span>
-							{/if}
-						</div>
-
-						<div class="mb-3">
-							{#if player.complete}
-								<span class="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">Oui</span>
-							{:else}
-								<span
-									class="rounded-full bg-red-100 px-2 py-1 text-xs text-red-700"
-									title={player.missing.join(', ')}>Non</span
-								>
-							{/if}
-						</div>
-
-						{#if player.id_card_front || player.id_card_back}
-							<div class="mb-3">{@render idCardButtons(player)}</div>
-						{/if}
-
-						<div class="flex items-center gap-2">
-							<div class="flex-1">{@render statusSelect(player)}{@render venueSelect(player)}</div>
-							<button
-								type="button"
-								onclick={() => (editingId = editingId === player.id ? null : player.id)}
-								class="rounded-xl bg-[#f4f5f7] px-3 py-1.5 text-xs text-dark-accent"
-							>
-								Modifier
-							</button>
-						</div>
-
-						{@render extraPanel(player)}
-
-						{#if editingId === player.id}
-							{@render editForm(player)}
+						{#if expandedId === player.id}
+							<div class="border-t border-dark-accent/10 px-4 py-4">
+								<dl class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm md:grid-cols-4">
+									<div><dt class="text-[11px] uppercase text-dark-accent">Genre</dt><dd class="text-dark">{genderLabel(player.gender)}</dd></div>
+									<div><dt class="text-[11px] uppercase text-dark-accent">Naissance</dt><dd class="text-dark">{@render valueOrMissing(player.birth_date ? formatDate(player.birth_date) : null)}</dd></div>
+									<div><dt class="text-[11px] uppercase text-dark-accent">Téléphone</dt><dd class="text-dark">{@render valueOrMissing(player.phone)}</dd></div>
+									<div><dt class="text-[11px] uppercase text-dark-accent">Instagram</dt><dd class="text-dark">{#if cleanInstagram(player.instagram)}<a href={`https://instagram.com/${cleanInstagram(player.instagram)}`} target="_blank" rel="noopener noreferrer" class="text-primary underline">@{cleanInstagram(player.instagram)}</a>{:else}—{/if}</dd></div>
+									<div><dt class="text-[11px] uppercase text-dark-accent">Club</dt><dd class="text-dark">{@render valueOrMissing(player.current_club)}</dd></div>
+									<div><dt class="text-[11px] uppercase text-dark-accent">Division</dt><dd class="text-dark">{@render valueOrMissing(player.division ? divisionLabel(player.division) : null)}</dd></div>
+									{#if player.type === 'academie' || player.status === 'accepted'}
+										<div><dt class="text-[11px] uppercase text-dark-accent">Lieu de naissance</dt><dd class="text-dark">{@render valueOrMissing(player.birth_place)}</dd></div>
+										<div><dt class="text-[11px] uppercase text-dark-accent">Nationalité</dt><dd class="text-dark">{@render valueOrMissing(player.nationality)}</dd></div>
+										<div class="col-span-2"><dt class="text-[11px] uppercase text-dark-accent">Adresse</dt><dd class="text-dark">{@render valueOrMissing(player.address)}{player.postal_code ? `, ${player.postal_code}` : ''}</dd></div>
+									{/if}
+								</dl>
+								<div class="mt-4 flex flex-wrap items-center gap-3">
+									{#if player.complete}
+										<span class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">Dossier complet</span>
+									{:else}
+										<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700" title={player.missing.join(', ')}>Incomplet : {player.missing.join(', ')}</span>
+									{/if}
+									{#if player.id_card_front || player.id_card_back}{@render idCardButtons(player)}{/if}
+									<button type="button" onclick={() => (editingId = editingId === player.id ? null : player.id)} class="rounded-xl bg-[#f4f5f7] px-3 py-1.5 text-xs text-dark-accent hover:bg-[#eceef1]">Modifier</button>
+								</div>
+								{@render extraPanel(player)}
+								{#if editingId === player.id}
+									{@render editForm(player)}
+								{/if}
+							</div>
 						{/if}
 					</div>
 				{/each}
@@ -1642,7 +1900,7 @@
 
 			<!-- Vue tableau : desktop + impression -->
 			<div
-				class="hidden overflow-x-auto rounded-xl border border-dark-accent/10 md:block print:block print:border-none"
+				class="hidden print:block"
 			>
 				<table class="w-full text-left text-sm">
 					<thead class="bg-[#f4f5f7] print:bg-transparent">
@@ -1841,6 +2099,18 @@
 					</tbody>
 				</table>
 			</div>
+			{#if listPageCount > 1}
+				<div class="mt-4 flex items-center justify-between text-sm text-dark-accent print:hidden">
+					<span>{(listPage - 1) * LIST_SIZE + 1}–{Math.min(listPage * LIST_SIZE, filteredPlayers.length)} sur {filteredPlayers.length}</span>
+					<div class="flex gap-1">
+						<button disabled={listPage === 1} onclick={() => listPage--} class="rounded-lg bg-[#f4f5f7] px-3 py-1.5 disabled:opacity-40">←</button>
+						{#each Array(listPageCount) as _, i}
+							<button onclick={() => (listPage = i + 1)} class="rounded-lg px-3 py-1.5 {listPage === i + 1 ? 'bg-dark text-white' : 'bg-[#f4f5f7]'}">{i + 1}</button>
+						{/each}
+						<button disabled={listPage === listPageCount} onclick={() => listPage++} class="rounded-lg bg-[#f4f5f7] px-3 py-1.5 disabled:opacity-40">→</button>
+					</div>
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>

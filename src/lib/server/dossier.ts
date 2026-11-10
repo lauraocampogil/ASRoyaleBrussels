@@ -1,4 +1,4 @@
-// Lecture et validation du formulaire de candidature « Rejoindre l'académie ».
+// Lecture et validation du formulaire de candidature « Faire un essai ».
 
 export type Dossier = Record<string, string | boolean | null>;
 

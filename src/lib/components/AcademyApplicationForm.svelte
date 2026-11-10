@@ -164,6 +164,22 @@
 			<input type="text" name="residence_pays" required value={v.residence_pays ?? ''} class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none" />
 		</label>
 		<label class="flex flex-col gap-2">
+			<span class="text-dark/70">Lieu de naissance *</span>
+			<input type="text" name="birth_place" required value={v.birth_place ?? ''} class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none" />
+		</label>
+		<label class="flex flex-col gap-2">
+			<span class="text-dark/70">Nationalité *</span>
+			<input type="text" name="nationality" required value={v.nationality ?? ''} class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none" />
+		</label>
+		<label class="flex flex-col gap-2 sm:col-span-2">
+			<span class="text-dark/70">Adresse postale *</span>
+			<input type="text" name="address" required value={v.address ?? ''} class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none" />
+		</label>
+		<label class="flex flex-col gap-2">
+			<span class="text-dark/70">Code postal *</span>
+			<input type="text" name="postal_code" required value={v.postal_code ?? ''} class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none" />
+		</label>
+		<label class="flex flex-col gap-2">
 			<span class="text-dark/70">Téléphone *</span>
 			<input type="tel" name="phone" required value={v.phone ?? ''} class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none" />
 		</label>
@@ -248,6 +264,23 @@
 			<span class="text-dark/70">Club actuel *</span>
 			<input type="text" name="current_club" required value={v.current_club ?? ''} class="rounded-md border border-dark/30 px-4 py-3 focus:border-primary focus:outline-none" />
 			<span class="text-xs text-dark-accent">Écris « Aucun » si tu n'as pas de club</span>
+		</label>
+		<label class="flex flex-col gap-2">
+			<span class="text-dark/70">Division</span>
+			<select name="division" value={v.division ?? ''} class="rounded-md border border-dark/30 bg-background px-4 py-3 focus:border-primary focus:outline-none">
+				<option value="">Sélectionne ta division</option>
+				<option value="nationale_1">Nationale 1</option>
+				<option value="nationale_2">Nationale 2</option>
+				<option value="nationale_3">Nationale 3</option>
+				<option value="provinciale_1">Provinciale 1</option>
+				<option value="provinciale_2">Provinciale 2</option>
+				<option value="provinciale_3">Provinciale 3</option>
+				<option value="provinciale_4">Provinciale 4</option>
+				<option value="regionale">Régionale</option>
+				<option value="u23">U23</option>
+				<option value="u18_elite">U18 Elite</option>
+				<option value="autre">Autre</option>
+			</select>
 		</label>
 		<label class="flex flex-col gap-2">
 			<span class="text-dark/70">Niveau, division ou championnat disputé *</span>

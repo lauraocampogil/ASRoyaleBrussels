@@ -1,4 +1,4 @@
-// Données partagées (site + dashboard) pour le dossier de candidature « Rejoindre l'académie »
+// Données partagées (site + dashboard) pour le dossier de candidature « Faire un essai »
 // et pour le suivi des paiements.
 
 export const FEES = {

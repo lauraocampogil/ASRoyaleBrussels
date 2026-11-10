@@ -56,11 +56,11 @@
 					2. Données personnelles collectées
 				</h2>
 				<p class="text-base leading-relaxed">
-					Dans le cadre du formulaire d'inscription (Talent Days / Rejoindre l'académie), Brussels
+					Dans le cadre du formulaire d'inscription (Talent Days / Faire un essai), Brussels
 					Summit Academy collecte les données suivantes :
 				</p>
 				<ul class="flex flex-col gap-1 pl-4">
-					{#each ['Prénom, nom et genre', 'Date de naissance', 'Poste préféré', 'Adresse email et numéro de téléphone', "Pour rejoindre l'académie : lieu de naissance, nationalité, adresse postale, code postal, club actuel et division", "Copie recto/verso de la carte d'identité"] as item}
+					{#each ['Prénom, nom et genre', 'Date de naissance', 'Adresse email et numéro de téléphone', 'Talent Day : poste préféré, compte Instagram et copie recto/verso de la carte d\'identité', "Faire un essai, après acceptation (dossier) : lieu de naissance, nationalité, adresse postale, poste, club et niveau, informations sportives et d'équipement, contact d'urgence et copie recto/verso de la carte d'identité"] as item}
 						<li class="flex items-start gap-2 text-base">
 							<span class="mt-1 text-primary">•</span>
 							<span>{item}</span>

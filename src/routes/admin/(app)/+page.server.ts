@@ -48,24 +48,33 @@ function requiredFieldsFor(type: string, accepted = false) {
 		{ key: 'birth_date', label: 'Date de naissance' },
 		{ key: 'gender', label: 'Genre' },
 		{ key: 'email', label: 'Email' },
-		{ key: 'phone', label: 'Téléphone' },
-		{ key: 'preferred_position', label: 'Poste préféré' },
-		{ key: 'id_card_front', label: "Carte d'identité (recto)" },
-		{ key: 'id_card_back', label: "Carte d'identité (verso)" }
+		{ key: 'phone', label: 'Téléphone' }
 	];
 
-	// Formulaire de base « Rejoindre l'académie »
-	if (type === 'academie' && !accepted) {
+	// Talent Day : poste préféré + carte d'identité demandés à l'inscription.
+	if (type === 'talent_days') {
 		base.push(
-			{ key: 'birth_place', label: 'Lieu de naissance' },
-			{ key: 'nationality', label: 'Nationalité' },
-			{ key: 'address', label: 'Adresse postale' },
-			{ key: 'postal_code', label: 'Code postal' }
+			{ key: 'preferred_position', label: 'Poste préféré' },
+			{ key: 'id_card_front', label: "Carte d'identité (recto)" },
+			{ key: 'id_card_back', label: "Carte d'identité (verso)" }
 		);
 	}
 
-	// Joueur accepté : il doit avoir complété le grand formulaire (dossier).
-	if (accepted) base.push({ key: 'dossier', label: 'Dossier de candidature' });
+	// Joueur accepté : tout le reste est demandé dans le formulaire de dossier.
+	if (accepted) {
+		for (const f of [
+			{ key: 'preferred_position', label: 'Poste préféré' },
+			{ key: 'id_card_front', label: "Carte d'identité (recto)" },
+			{ key: 'id_card_back', label: "Carte d'identité (verso)" },
+			{ key: 'birth_place', label: 'Lieu de naissance' },
+			{ key: 'nationality', label: 'Nationalité' },
+			{ key: 'address', label: 'Adresse postale' },
+			{ key: 'postal_code', label: 'Code postal' },
+			{ key: 'dossier', label: 'Dossier de candidature' }
+		]) {
+			if (!base.some((b) => b.key === f.key)) base.push(f);
+		}
+	}
 
 	return base;
 }
@@ -97,13 +106,13 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	if (!res.ok) {
 		const errorBody = await res.json().catch(() => null);
 		console.error('Directus Registration fetch failed:', res.status, JSON.stringify(errorBody));
-		return { players: [], loadError: true, talentDay: null };
+		return { players: [], loadError: true, talentDay: null, talentDayEdition: null };
 	}
 
 	const { data: registrations } = await res.json();
 
 	const profilesRes = await fetch(
-		`${PUBLIC_DIRECTUS_URL}/items/Players?limit=-1&fields=id,name,goals,assists,foot,height`,
+		`${PUBLIC_DIRECTUS_URL}/items/Players?limit=-1&fields=id,name,goals,assists,games,foot,height`,
 		{ headers: getAuthHeaders() }
 	);
 	const profiles: Record<string, any>[] = profilesRes.ok
@@ -122,6 +131,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
 			dossier: parseJsonField(r.dossier),
 			paiements: parseJsonField(r.paiements) ?? [],
 			presences: parseJsonField(r.presences) ?? {},
+			stats: parseJsonField(r.stats) ?? {},
 			missing,
 			complete: missing.length === 0,
 			status: r.status ?? 'pending',
@@ -133,14 +143,28 @@ export const load: PageServerLoad = async ({ fetch }) => {
 		headers: getAuthHeaders()
 	});
 	let talentDay = null;
+	let talentDayEdition: { date: string; passed: boolean; archived: boolean } | null = null;
 	if (textRes.ok) {
 		const { data: settings } = await textRes.json();
 		if (settings?.talent_day_active && settings?.talent_day_date) {
 			talentDay = { date: settings.talent_day_date };
 		}
+		if (settings?.talent_day_date) {
+			const todayBrussels = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Brussels' });
+			const d = String(settings.talent_day_date).slice(0, 10);
+			// Les infos restent visibles 7 jours après l'événement, puis passent en historique.
+			const limit = new Date(`${d}T00:00:00Z`);
+			limit.setUTCDate(limit.getUTCDate() + 7);
+			const archived = limit.toISOString().slice(0, 10) <= todayBrussels;
+			talentDayEdition = {
+				date: d,
+				passed: d < todayBrussels || !settings.talent_day_active,
+				archived
+			};
+		}
 	}
 
-	return { players, loadError: false, talentDay };
+	return { players, loadError: false, talentDay, talentDayEdition };
 };
 
 export const actions: Actions = {
@@ -492,7 +516,7 @@ export const actions: Actions = {
 
 		const wanted = new Map<string, string>();
 		for (const [key, value] of data.entries()) {
-			if (key.startsWith('s_') && ['present', 'absent'].includes(String(value))) {
+			if (key.startsWith('s_') && ['present', 'absent', 'clear'].includes(String(value))) {
 				wanted.set(key.slice(2), String(value));
 			}
 		}
@@ -511,13 +535,17 @@ export const actions: Actions = {
 				.filter(
 					(r) =>
 						wanted.has(String(r.id)) &&
-						wanted.get(String(r.id)) !== parseJsonField<Record<string, string>>(r.presences)?.[date]
+						(wanted.get(String(r.id)) === 'clear'
+							? parseJsonField<Record<string, string>>(r.presences)?.[date] !== undefined
+							: wanted.get(String(r.id)) !== parseJsonField<Record<string, string>>(r.presences)?.[date])
 				)
 				.map(async (r) => {
-					const presences = {
-						...(parseJsonField<Record<string, string>>(r.presences) ?? {}),
-						[date]: wanted.get(String(r.id))
+					const presences: Record<string, string> = {
+						...(parseJsonField<Record<string, string>>(r.presences) ?? {})
 					};
+					const choice = wanted.get(String(r.id));
+					if (choice === 'clear') delete presences[date];
+					else presences[date] = choice as string;
 					const patch = await patchRegistration(r.id, { presences });
 					if (patch.ok) saved++;
 				})
@@ -616,28 +644,37 @@ export const actions: Actions = {
 	updateStats: async ({ request, fetch }) => {
 		const data = await request.formData();
 		const profileId = String(data.get('profile_id') ?? '');
+		const registrationId = String(data.get('id') ?? '');
+		const stats = {
+			height: numOrNull(data.get('height')),
+			goals: numOrNull(data.get('goals')),
+			assists: numOrNull(data.get('assists')),
+			games: numOrNull(data.get('games')),
+			foot: String(data.get('foot') ?? '') || null
+		};
 
-		if (!profileId) {
-			return fail(400, { error: 'Aucune fiche du site liée à ce joueur.' });
+		// Fiche publique « Players » existante : on la met à jour (visible sur le site).
+		if (profileId) {
+			const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Players/${profileId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+				body: JSON.stringify(stats)
+			});
+
+			if (!res.ok) {
+				const errorBody = await res.json().catch(() => null);
+				console.error('Directus Players update failed:', res.status, JSON.stringify(errorBody));
+				return fail(500, { error: "Les statistiques n'ont pas pu être enregistrées." });
+			}
+			return { success: true };
 		}
 
-		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Players/${profileId}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-			body: JSON.stringify({
-				height: numOrNull(data.get('height')),
-				goals: numOrNull(data.get('goals')),
-				assists: numOrNull(data.get('assists')),
-				foot: String(data.get('foot') ?? '') || null
-			})
-		});
-
-		if (!res.ok) {
-			const errorBody = await res.json().catch(() => null);
-			console.error('Directus Players update failed:', res.status, JSON.stringify(errorBody));
-			return fail(500, { error: "Les statistiques n'ont pas pu être enregistrées." });
+		// Pas de fiche publique : les stats sont gardées sur l'inscription (privé, pas sur le site).
+		if (!registrationId) return fail(400, { error: 'Joueur introuvable.' });
+		const patch = await patchRegistration(registrationId, { stats });
+		if (!patch.ok) {
+			return fail(500, { error: "Les statistiques n'ont pas pu être enregistrées (champ « stats » ?)." });
 		}
-
 		return { success: true };
 	}
 };

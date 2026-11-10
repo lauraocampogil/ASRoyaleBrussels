@@ -54,6 +54,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 	firstName: string;
 	type: 'talent_days' | 'academie';
 	talentDayDate?: string;
+	gender?: string | null;
 }) {
 	if (opts.type === 'talent_days') {
 		const subject = 'Ton inscription au Talent Day est confirmée — infos pratiques';
@@ -94,12 +95,38 @@ export async function sendRegistrationConfirmationEmail(opts: {
 		return;
 	}
 
-	const subject = "Confirmation de ta demande d'inscription à l'académie";
+	const g = (opts.gender ?? '').trim();
+	const isFemale = /^(f|fille|femme|female|woman|girl)$/i.test(g);
+	const isMale = /^(m|garcon|garçon|homme|male|man|boy)$/i.test(g);
+	const horaire = isFemale
+		? `<strong>${MAKEUP.girls}</strong>`
+		: isMale
+			? `<strong>${MAKEUP.boys}</strong>`
+			: `<strong>${MAKEUP.girls}</strong> pour les filles, <strong>${MAKEUP.boys}</strong> pour les garçons`;
+
+	const subject = 'Ton essai à Brussels Summit Academy : on t\'attend ce week-end';
 	const content = `
 		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Salut ${opts.firstName},</h2>
-		<p>Nous avons bien reçu ta demande pour rejoindre Brussels Summit Academy. Merci pour ta confiance !</p>
-		<p>Notre équipe va examiner ton dossier avec attention et reviendra vers toi rapidement avec une réponse.</p>
-		<p style="margin-top:24px;">À bientôt,<br/>L'équipe Brussels Summit Academy</p>
+		<p>Merci pour ton inscription ! Ta demande pour <strong>faire un essai</strong> à Brussels Summit Academy a bien été enregistrée.</p>
+		<p><strong>On t'attend ce week-end</strong>, samedi ou dimanche. Un membre du staff va te contacter pour te donner toutes les infos (jour, horaire et lieu).</p>
+		<table style="width:100%; border-collapse:collapse; margin:20px 0;">
+			<tr>
+				<td style="padding:4px 0; color:#555; width:90px;">Horaire</td>
+				<td style="padding:4px 0;">${horaire}</td>
+			</tr>
+			<tr>
+				<td style="padding:4px 0; color:#555;">Lieu</td>
+				<td style="padding:4px 0; font-weight:600;">Centre Nelson Mandela<br/>Rue de Ransbeek 227, 1120 Bruxelles</td>
+			</tr>
+		</table>
+		<p style="margin:0 0 8px; font-weight:600;">À apporter :</p>
+		<ul style="margin:0 0 20px; padding-left:20px; color:#333;">
+			<li>Tenue de sport complète + crampons</li>
+			<li>Ta carte d'identité originale</li>
+			<li>Une bouteille d'eau</li>
+		</ul>
+		<p>Une question ? Écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
+		<p style="margin-top:24px;">À très vite sur le terrain,<br/>L'équipe Brussels Summit Academy</p>
 	`;
 	await send({
 		from: env.RESEND_FROM as string,
@@ -275,7 +302,7 @@ export async function sendStaffNotificationEmail(opts: {
 	const recipients = getStaffEmails();
 	if (recipients.length === 0) return;
 
-	const typeLabel = opts.type === 'talent_days' ? 'Talent Day' : "Rejoindre l'académie";
+	const typeLabel = opts.type === 'talent_days' ? 'Talent Day' : "Faire un essai";
 	const title =
 		opts.kind === 'completee' ? 'Dossier complété par un joueur accepté' : `Nouvelle inscription · ${typeLabel}`;
 	const row = (label: string, value?: string | null) =>

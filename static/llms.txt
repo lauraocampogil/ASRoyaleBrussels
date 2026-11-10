@@ -8,7 +8,7 @@ Brussels Summit Academy forme des joueuses et joueurs de tous âges à Bruxelles
 
 - [Accueil](https://brussels-summitacademy.be/): présentation de l'académie, méthode, parcours, joueurs, équipe encadrante.
 - [Bio](https://brussels-summitacademy.be/bio): présentation détaillée de l'académie.
-- [Inscription](https://brussels-summitacademy.be/inscription): inscription au Talent Day ou pour rejoindre l'académie.
+- [Inscription](https://brussels-summitacademy.be/inscription): inscription au Talent Day ou pour faire un essai.
 
 ## Contact
 

@@ -113,7 +113,7 @@
 				</h2>
 				<p class="text-base leading-relaxed">
 					Brussels Summit Academy collecte des données personnelles dans le cadre de son formulaire
-					d'inscription (Talent Days / Rejoindre l'académie). Pour plus d'informations, consultez
+					d'inscription (Talent Days / Faire un essai). Pour plus d'informations, consultez
 					notre
 					<a href="/politique-de-confidentialite" class="text-primary underline"
 						>politique de confidentialité</a

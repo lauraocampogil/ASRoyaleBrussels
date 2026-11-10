@@ -4,6 +4,7 @@ import { env } from '$env/dynamic/private';
 import { cleanInstagram } from '$lib/instagram';
 import type { Actions, PageServerLoad } from './$types';
 import { sendRegistrationConfirmationEmail, sendStaffNotificationEmail } from '$lib/server/email';
+import { sendWhatsAppToStaff } from '$lib/server/whatsapp';
 import { looksLikeIdDocument } from '$lib/server/idVerification';
 import { isPast } from '$lib/server/talentDay';
 import { parseDossier, type Dossier } from '$lib/server/dossier';
@@ -94,7 +95,7 @@ export const actions: Actions = {
 			last_name: data.get('last_name')?.toString() ?? '',
 			birth_date: data.get('birth_date')?.toString() ?? '',
 			gender: data.get('gender')?.toString() ?? '',
-			preferred_position: data.get('preferred_position')?.toString() ?? '',
+			preferred_position: data.get('preferred_position')?.toString() || null,
 			birth_place: data.get('birth_place')?.toString() || null,
 			nationality: data.get('nationality')?.toString() || null,
 			address: data.get('address')?.toString() || null,
@@ -106,12 +107,17 @@ export const actions: Actions = {
 			instagram: cleanInstagram(data.get('instagram')?.toString())
 		};
 
+		// « Faire un essai » (formulaire court) : seulement identité + contact.
+		// Le reste est demandé dans le dossier, une fois le joueur accepté.
+		const isDossier = isAcademie && data.get('dossier_form') === '1';
+		const isBasicTrial = isAcademie && !isDossier;
+
 		if (!isAcademie) {
 			const settingsRes = await fetch(`${PUBLIC_DIRECTUS_URL}/items/RegistrationText`);
 			const settings = await settingsRes.json().catch(() => null);
 			if (!settings?.data?.talent_day_active || isPast(settings?.data?.talent_day_date)) {
 				return fail(403, {
-					error: "Les inscriptions au Talent Day sont terminées. Tu peux rejoindre l'académie.",
+					error: "Les inscriptions au Talent Day sont terminées. Tu peux faire un essai.",
 					values
 				});
 			}
@@ -152,7 +158,7 @@ export const actions: Actions = {
 			!values.last_name ||
 			!values.birth_date ||
 			!values.gender ||
-			!values.preferred_position ||
+			(!isBasicTrial && !values.preferred_position) ||
 			!values.email ||
 			!values.phone
 		) {
@@ -167,7 +173,7 @@ export const actions: Actions = {
 			});
 		}
 
-		if (!values.instagram) {
+		if (!isBasicTrial && !values.instagram) {
 			return fail(400, {
 				error: 'Indique ton compte Instagram, par exemple @brusselssummitacademy.',
 				values
@@ -192,11 +198,9 @@ export const actions: Actions = {
 		// Joueur déjà accepté (Talent Day) : on complète sa fiche existante avec le dossier
 		const existing = isAcademie ? await findAcceptedByEmail(values.email) : null;
 
-		// Deux formulaires pour « Rejoindre l'académie » :
+		// Deux formulaires pour « Faire un essai » :
 		// - le formulaire de base (tout le monde) ;
 		// - le grand formulaire (dossier), réservé aux joueurs acceptés.
-		const isDossier = isAcademie && data.get('dossier_form') === '1';
-
 		if (isDossier && !existing) {
 			return fail(403, {
 				error:
@@ -206,11 +210,13 @@ export const actions: Actions = {
 		}
 
 		if (
-			isAcademie &&
-			!isDossier &&
+			isDossier &&
 			(!values.birth_place || !values.nationality || !values.address || !values.postal_code)
 		) {
-			return fail(400, { error: 'Merci de remplir tous les champs obligatoires.', values });
+			return fail(400, {
+				error: 'Merci de remplir ton lieu de naissance, ta nationalité et ton adresse.',
+				values
+			});
 		}
 
 		let dossier: Dossier | null = null;
@@ -239,7 +245,7 @@ export const actions: Actions = {
 		let idCardBackId: string | null = null;
 
 		// Le grand formulaire redemande toujours la carte d'identité (obligatoire, elle remplace l'ancienne).
-		const needsIds = isDossier || !(existing?.id_card_front && existing?.id_card_back);
+		const needsIds = !isBasicTrial && (isDossier || !(existing?.id_card_front && existing?.id_card_back));
 		if (needsIds) {
 			const idFront = data.get('id_card_front');
 			const idBack = data.get('id_card_back');
@@ -358,7 +364,8 @@ export const actions: Actions = {
 					to: values.email,
 					firstName: values.first_name,
 					type: values.type === 'talent_days' ? 'talent_days' : 'academie',
-					talentDayDate: talentDayDate || undefined
+					talentDayDate: talentDayDate || undefined,
+					gender: values.gender
 				});
 				emailSent = true;
 			} catch (err) {
@@ -394,6 +401,17 @@ export const actions: Actions = {
 		const task = sendConfirmation().catch((err) => console.error('sendConfirmation failed:', err));
 		await background(task);
 		await notifyStaff('nouvelle');
+
+		// Faire un essai : message WhatsApp automatique aux 2 numéros du staff.
+		if (isBasicTrial) {
+			await background(
+				sendWhatsAppToStaff(
+					`Nouvelle inscription « Faire un essai » : ${values.first_name} ${values.last_name}` +
+						` (${values.gender === 'fille' ? 'femme' : 'homme'}). Tél : ${values.phone} · Email : ${values.email}.` +
+						` Merci de lui donner les infos pour ce week-end.`
+				).catch((err) => console.error('WhatsApp notification failed:', err))
+			);
+		}
 
 		return { success: true };
 	}
