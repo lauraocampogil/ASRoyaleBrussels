@@ -285,13 +285,25 @@
 	let essaiAll = $derived(data.players.filter((p: any) => p.type !== 'talent_days'));
 	// Même logique que la page Joueurs : « pas venus » = historique, et après le Talent Day
 	// les demandes à traiter ne viennent plus que de « Faire un essai ».
+	let essaiEmails = $derived(
+		new Set(
+			data.players
+				.filter((p: any) => p.type !== 'talent_days')
+				.map((p: any) => String(p.email ?? '').toLowerCase())
+		)
+	);
 	const stageOfPlayer = (p: any) => {
 		const passed = data.talentDayEdition?.passed ?? false;
-		if (
+		const isTalent = p.type === 'talent_days';
+		const noShow =
 			p.status !== 'accepted' &&
-			(p.venue === false || (p.type === 'talent_days' && passed && p.status === 'pending' && p.venue !== true))
-		)
-			return 'absent';
+			(p.venue === false || (isTalent && passed && p.status === 'pending' && p.venue !== true));
+		if (noShow) {
+			const ref = Date.parse(isTalent ? (data.talentDayEdition?.date ?? '') : String(p.date_created ?? ''));
+			const recent = Number.isNaN(ref) || Date.now() - ref < 14 * 24 * 3600 * 1000;
+			const superseded = isTalent && essaiEmails.has(String(p.email ?? '').toLowerCase());
+			return recent && !superseded ? 'absent' : 'archive';
+		}
 		if (p.status === 'accepted') return hasDossierOf(p) ? 'complete' : 'accepted';
 		return p.status === 'rejected' ? 'rejected' : 'pending';
 	};
@@ -1149,7 +1161,7 @@
 		<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 			<div class="rounded-2xl bg-white p-5 shadow-sm">
 				<p class="font-clash mb-4 text-sm text-dark">Étapes des candidatures</p>
-				{#each [['À traiter', toTreatCount, 'bg-amber-400'], ['Dossier à compléter', dossierMissingCount, 'bg-blue-500'], ['Membres (dossier complet)', memberCount, 'bg-green-500'], ['Pas venus (historique)', absentHistoryCount, 'bg-gray-400'], ['Refusés', rejectedStageCount, 'bg-red-400']] as [label, n, color]}
+				{#each [['À traiter', toTreatCount, 'bg-amber-400'], ['Dossier à compléter', dossierMissingCount, 'bg-blue-500'], ['Membres (dossier complet)', memberCount, 'bg-green-500'], ['Pas venus (2 sem.)', absentHistoryCount, 'bg-gray-400'], ['Refusés', rejectedStageCount, 'bg-red-400']] as [label, n, color]}
 					<div class="mb-3 last:mb-0">
 						<div class="mb-1 flex justify-between text-xs text-dark-accent"><span>{label}</span><span>{n}</span></div>
 						<div class="h-2 w-full overflow-hidden rounded-full bg-[#f4f5f7]">
@@ -1455,9 +1467,11 @@
 		<div class="rounded-2xl bg-white p-5 shadow-sm">
 
 			<div class="mb-4 flex flex-wrap items-center gap-3">
-				<FilterMenu
-					items={[{ label: 'Paiement du mois', value: payFilter, def: 'all', options: [['all', 'Tous', payRows.length], ['unpaid', 'Impayés', payRows.length - payPaidCount], ['paid', 'Payés', payPaidCount]], set: (v: string) => (payFilter = v as any) }]}
-				/>
+				<select bind:value={payFilter} class="rounded-xl border border-dark-accent/10 bg-white px-4 py-2 text-sm text-dark shadow-sm">
+					<option value="all">Tous ({payRows.length})</option>
+					<option value="unpaid">Impayés ({payRows.length - payPaidCount})</option>
+					<option value="paid">Payés ({payPaidCount})</option>
+				</select>
 				<input bind:value={paySearch} placeholder="Rechercher un joueur…" class="min-w-52 flex-1 rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-4 py-2 text-sm" />
 			</div>
 
@@ -1638,9 +1652,11 @@
 		</div>
 
 		<div class="mb-4 flex flex-wrap items-center gap-3">
-			<FilterMenu
-				items={[{ label: 'Genre', value: genderFilter, def: 'all', options: [['all', 'Tous'], ['fille', 'Filles'], ['garcon', 'Garçons']], set: (v: string) => (genderFilter = v as any) }]}
-			/>
+			<select bind:value={genderFilter} class="rounded-xl border border-dark-accent/10 bg-white px-4 py-2 text-sm text-dark shadow-sm">
+				<option value="all">Tous</option>
+				<option value="fille">Filles</option>
+				<option value="garcon">Garçons</option>
+			</select>
 			<input type="search" bind:value={statsSearch} placeholder="Rechercher un joueur…" aria-label="Rechercher un joueur" class="min-w-52 flex-1 rounded-xl border border-dark-accent/10 bg-white px-4 py-2 text-sm" />
 		</div>
 

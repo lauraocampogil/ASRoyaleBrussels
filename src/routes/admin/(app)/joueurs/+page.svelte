@@ -2,7 +2,6 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import FilterMenu from '$lib/components/admin/FilterMenu.svelte';
 	import { DOSSIER_SECTIONS, MONTH_LABELS, FEES } from '$lib/dossier';
 
 	let { data } = $props();
@@ -158,9 +157,11 @@
 			placeholder="Rechercher un nom ou un email…"
 			class="min-w-60 flex-1 rounded-xl border border-dark-accent/10 bg-white px-4 py-2 text-sm"
 		/>
-		<FilterMenu
-			items={[{ label: 'Origine', value: typeFilter, def: 'all', options: [['all', 'Tous'], ['academie', 'Faire un essai'], ['talent_days', 'Talent Day']], set: (v: string) => (typeFilter = v) }]}
-		/>
+		<select bind:value={typeFilter} class="rounded-xl border border-dark-accent/10 bg-white px-4 py-2 text-sm text-dark shadow-sm">
+			<option value="all">Tous</option>
+			<option value="academie">Faire un essai</option>
+			<option value="talent_days">Talent Day</option>
+		</select>
 	</div>
 
 	{#if view === 'cartes'}

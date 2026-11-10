@@ -104,12 +104,13 @@ export async function sendRegistrationConfirmationEmail(opts: {
 			? `<strong>${MAKEUP.boys}</strong>`
 			: `<strong>${MAKEUP.girls}</strong> pour les filles, <strong>${MAKEUP.boys}</strong> pour les garçons`;
 
-	const subject = 'Ton essai à Brussels Summit Academy : on t\'attend ce week-end';
+	const subject = 'Ta demande pour faire un essai à Brussels Summit Academy';
 	const content = `
 		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Salut ${opts.firstName},</h2>
-		<p>Merci pour ton inscription ! Ta demande pour <strong>faire un essai</strong> à Brussels Summit Academy a bien été enregistrée.</p>
-		<p><strong>On t'attend ce week-end</strong>, samedi ou dimanche. Un membre du staff va te contacter pour te donner toutes les infos (jour, horaire et lieu).</p>
-		<table style="width:100%; border-collapse:collapse; margin:20px 0;">
+		<p>Merci, tu es bien enregistré(e) pour <strong>faire un essai</strong> à Brussels Summit Academy !</p>
+		<p>Un membre du staff va te contacter très bientôt pour te confirmer si on t'attend <strong>ce week-end ou le suivant</strong>.</p>
+		<p style="margin:20px 0 8px; font-weight:600;">Nos entraînements :</p>
+		<table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
 			<tr>
 				<td style="padding:4px 0; color:#555; width:90px;">Horaire</td>
 				<td style="padding:4px 0;">${horaire}</td>
@@ -119,14 +120,7 @@ export async function sendRegistrationConfirmationEmail(opts: {
 				<td style="padding:4px 0; font-weight:600;">Centre Nelson Mandela<br/>Rue de Ransbeek 227, 1120 Bruxelles</td>
 			</tr>
 		</table>
-		<p style="margin:0 0 8px; font-weight:600;">À apporter :</p>
-		<ul style="margin:0 0 20px; padding-left:20px; color:#333;">
-			<li>Tenue de sport complète + crampons</li>
-			<li>Ta carte d'identité originale</li>
-			<li>Une bouteille d'eau</li>
-		</ul>
-		<p>Une question ? Écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
-		<p style="margin-top:24px;">À très vite sur le terrain,<br/>L'équipe Brussels Summit Academy</p>
+		<p style="margin-top:24px;">À très vite,<br/>L'équipe Brussels Summit Academy</p>
 	`;
 	await send({
 		from: env.RESEND_FROM as string,

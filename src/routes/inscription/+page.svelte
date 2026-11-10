@@ -197,7 +197,7 @@
 					{acceptedLink
 						? "Merci ! Ton dossier a bien été reçu, le staff va l'étudier."
 						: activeTab === 'academie'
-						? "On t'attend ce week-end ! Tu vas recevoir un email de confirmation et un membre du staff te contactera avec toutes les infos."
+						? "Merci, tu es bien enregistré(e) ! Tu vas recevoir un email de confirmation et le staff te contactera."
 						: 'On te recontacte très vite.'}
 				</p>
 			</div>

@@ -408,7 +408,7 @@ export const actions: Actions = {
 				sendWhatsAppToStaff(
 					`Nouvelle inscription « Faire un essai » : ${values.first_name} ${values.last_name}` +
 						` (${values.gender === 'fille' ? 'femme' : 'homme'}). Tél : ${values.phone} · Email : ${values.email}.` +
-						` Merci de lui donner les infos pour ce week-end.`
+						` Merci de le/la contacter pour organiser l'essai.`
 				).catch((err) => console.error('WhatsApp notification failed:', err))
 			);
 		}
