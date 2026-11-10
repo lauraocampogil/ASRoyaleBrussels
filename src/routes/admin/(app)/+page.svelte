@@ -283,7 +283,21 @@
 	let tdEditionPassed = $derived(data.talentDayEdition?.passed ?? false);
 	let tdUpcomingCount = $derived(tdArchived ? 0 : tdAll.length);
 	let essaiAll = $derived(data.players.filter((p: any) => p.type !== 'talent_days'));
-	let toTreatCount = $derived(data.players.filter((p: any) => p.status === 'pending').length);
+	// Même logique que la page Joueurs : « pas venus » = historique, et après le Talent Day
+	// les demandes à traiter ne viennent plus que de « Faire un essai ».
+	const stageOfPlayer = (p: any) => {
+		const passed = data.talentDayEdition?.passed ?? false;
+		if (
+			p.status !== 'accepted' &&
+			(p.venue === false || (p.type === 'talent_days' && passed && p.status === 'pending' && p.venue !== true))
+		)
+			return 'absent';
+		if (p.status === 'accepted') return hasDossierOf(p) ? 'complete' : 'accepted';
+		return p.status === 'rejected' ? 'rejected' : 'pending';
+	};
+	let toTreatCount = $derived(data.players.filter((p: any) => stageOfPlayer(p) === 'pending').length);
+	let absentHistoryCount = $derived(data.players.filter((p: any) => stageOfPlayer(p) === 'absent').length);
+	let rejectedStageCount = $derived(data.players.filter((p: any) => stageOfPlayer(p) === 'rejected').length);
 	let dossierMissingCount = $derived(
 		data.players.filter((p: any) => p.status === 'accepted' && !hasDossierOf(p)).length
 	);
@@ -1125,9 +1139,9 @@
 					<p class="pb-1 text-xs text-dark-accent">demandes au total</p>
 				</div>
 				<div class="grid grid-cols-3 gap-2 rounded-xl bg-[#f4f5f7] p-3 text-center">
-					<div><p class="font-clash text-lg text-amber-600">{essaiAll.filter((p: any) => p.status === 'pending').length}</p><p class="text-[11px] text-dark-accent">À traiter</p></div>
+					<div><p class="font-clash text-lg text-amber-600">{essaiAll.filter((p: any) => stageOfPlayer(p) === 'pending').length}</p><p class="text-[11px] text-dark-accent">À traiter</p></div>
 					<div><p class="font-clash text-lg text-green-600">{essaiAll.filter((p: any) => p.status === 'accepted').length}</p><p class="text-[11px] text-dark-accent">Acceptés</p></div>
-					<div><p class="font-clash text-lg text-red-500">{essaiAll.filter((p: any) => p.status === 'rejected').length}</p><p class="text-[11px] text-dark-accent">Refusés</p></div>
+					<div><p class="font-clash text-lg text-red-500">{essaiAll.filter((p: any) => stageOfPlayer(p) === 'rejected').length}</p><p class="text-[11px] text-dark-accent">Refusés</p></div>
 				</div>
 			</div>
 		</div>
@@ -1135,7 +1149,7 @@
 		<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 			<div class="rounded-2xl bg-white p-5 shadow-sm">
 				<p class="font-clash mb-4 text-sm text-dark">Étapes des candidatures</p>
-				{#each [['En attente', toTreatCount, 'bg-amber-400'], ['Dossier à compléter', dossierMissingCount, 'bg-blue-500'], ['Membres (dossier complet)', memberCount, 'bg-green-500'], ['Refusés', rejectedCount, 'bg-red-400']] as [label, n, color]}
+				{#each [['À traiter', toTreatCount, 'bg-amber-400'], ['Dossier à compléter', dossierMissingCount, 'bg-blue-500'], ['Membres (dossier complet)', memberCount, 'bg-green-500'], ['Pas venus (historique)', absentHistoryCount, 'bg-gray-400'], ['Refusés', rejectedStageCount, 'bg-red-400']] as [label, n, color]}
 					<div class="mb-3 last:mb-0">
 						<div class="mb-1 flex justify-between text-xs text-dark-accent"><span>{label}</span><span>{n}</span></div>
 						<div class="h-2 w-full overflow-hidden rounded-full bg-[#f4f5f7]">

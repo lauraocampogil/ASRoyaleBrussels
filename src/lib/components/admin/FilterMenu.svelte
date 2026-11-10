@@ -9,13 +9,24 @@
 
 	let { items = [] }: { items: Item[] } = $props();
 	let open = $state(false);
+	let btn = $state<HTMLButtonElement | null>(null);
+	let alignRight = $state(false);
+	function toggle() {
+		if (!open && btn) {
+			const r = btn.getBoundingClientRect();
+			// Le panneau (288 px) ne doit jamais dépasser de l'écran.
+			alignRight = r.left + 288 > window.innerWidth - 8;
+		}
+		open = !open;
+	}
 	let active = $derived(items.filter((i) => i.value !== i.def).length);
 </script>
 
 <div class="relative print:hidden">
 	<button
 		type="button"
-		onclick={() => (open = !open)}
+		bind:this={btn}
+		onclick={toggle}
 		class="flex items-center gap-2 rounded-xl border border-dark-accent/10 bg-white px-4 py-2 text-sm text-dark shadow-sm transition-colors hover:bg-[#f4f5f7]"
 		aria-expanded={open}
 	>
@@ -30,7 +41,7 @@
 
 	{#if open}
 		<button type="button" class="fixed inset-0 z-20 cursor-default" aria-label="Fermer les filtres" onclick={() => (open = false)}></button>
-		<div class="absolute left-0 z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-4 shadow-lg ring-1 ring-dark-accent/10">
+		<div class="absolute z-30 mt-2 w-72 {alignRight ? 'right-0' : 'left-0'} max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-4 shadow-lg ring-1 ring-dark-accent/10">
 			{#each items as it}
 				<label class="mb-3 block text-xs font-medium text-dark-accent">
 					{it.label}

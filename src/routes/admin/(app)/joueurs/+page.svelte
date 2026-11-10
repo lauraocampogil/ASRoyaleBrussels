@@ -159,7 +159,7 @@
 			class="min-w-60 flex-1 rounded-xl border border-dark-accent/10 bg-white px-4 py-2 text-sm"
 		/>
 		<FilterMenu
-			items={[{ label: 'Origine', value: typeFilter, def: 'all', options: [['all', 'Toutes les origines'], ['academie', 'Faire un essai'], ['talent_days', 'Talent Day']], set: (v: string) => (typeFilter = v) }]}
+			items={[{ label: 'Origine', value: typeFilter, def: 'all', options: [['all', 'Tous'], ['academie', 'Faire un essai'], ['talent_days', 'Talent Day']], set: (v: string) => (typeFilter = v) }]}
 		/>
 	</div>
 
