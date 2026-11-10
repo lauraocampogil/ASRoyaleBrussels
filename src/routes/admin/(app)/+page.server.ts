@@ -336,6 +336,22 @@ export const actions: Actions = {
 	},
 
 	// Présence au Talent Day : oui / non (ou vide pour annuler).
+	// Archiver / désarchiver une demande (sort des listes de travail, reste consultable).
+	archivePlayer: async ({ request }) => {
+		const data = await request.formData();
+		const id = String(data.get('id') ?? '');
+		const archived = String(data.get('archived') ?? '') === 'true';
+		if (!id) return fail(400, { error: 'Joueur introuvable.' });
+
+		const patch = await patchRegistration(id, { archived });
+		if (!patch.ok) {
+			return fail(500, {
+				error: "L'archivage a échoué : vérifie que le champ « archived » (Boolean) existe dans Registration."
+			});
+		}
+		return { success: true };
+	},
+
 	updateVenue: async ({ request, fetch }) => {
 		const data = await request.formData();
 		const id = data.get('id');

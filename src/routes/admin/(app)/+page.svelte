@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import type { PageData } from './$types';
+	import { autoArchived, isNoShow } from '$lib/archive';
 	import FilterMenu from '$lib/components/admin/FilterMenu.svelte';
 	import { cleanInstagram } from '$lib/instagram';
 	import { DOSSIER_SECTIONS, FEES, MONTH_LABELS } from '$lib/dossier';
@@ -292,18 +293,17 @@
 				.map((p: any) => String(p.email ?? '').toLowerCase())
 		)
 	);
+	const archiveCtx = $derived({
+		talentDayDate: data.talentDayEdition?.date ?? '',
+		talentDayPassed: data.talentDayEdition?.passed ?? false,
+		essaiEmails
+	});
+	// Archivé = archivé à la main OU « pas venu » depuis plus de 7 jours (automatique).
+	const isArch = (p: any) =>
+		p.status !== 'accepted' && (p.archived === true || autoArchived(p, archiveCtx));
 	const stageOfPlayer = (p: any) => {
-		const passed = data.talentDayEdition?.passed ?? false;
-		const isTalent = p.type === 'talent_days';
-		const noShow =
-			p.status !== 'accepted' &&
-			(p.venue === false || (isTalent && passed && p.status === 'pending' && p.venue !== true));
-		if (noShow) {
-			const ref = Date.parse(isTalent ? (data.talentDayEdition?.date ?? '') : String(p.date_created ?? ''));
-			const recent = Number.isNaN(ref) || Date.now() - ref < 14 * 24 * 3600 * 1000;
-			const superseded = isTalent && essaiEmails.has(String(p.email ?? '').toLowerCase());
-			return recent && !superseded ? 'absent' : 'archive';
-		}
+		if (isArch(p)) return 'archive';
+		if (isNoShow(p, archiveCtx.talentDayPassed)) return 'absent';
 		if (p.status === 'accepted') return hasDossierOf(p) ? 'complete' : 'accepted';
 		return p.status === 'rejected' ? 'rejected' : 'pending';
 	};
@@ -594,7 +594,7 @@
 				: acceptedPlayers
 	);
 
-	let lsStatus = $state<'all' | 'pending' | 'rejected'>('all');
+	let lsStatus = $state<'all' | 'pending' | 'rejected' | 'archived'>('all');
 	let lsSearch = $state('');
 	let expandedId = $state<number | null>(null);
 	let filteredPlayers = $derived(
@@ -610,22 +610,39 @@
 						? p.venue === false
 						: p.venue !== true && p.venue !== false
 		)
-			.filter((p: any) => lsStatus === 'all' || p.status === lsStatus)
+			.filter((p: any) =>
+				lsStatus === 'archived'
+					? isArch(p)
+					: isArch(p)
+						? false
+						: lsStatus === 'all'
+							? true
+							: lsStatus === 'pending'
+								? p.status === 'pending' && p.venue !== false
+								: p.status === lsStatus
+			)
 			.filter((p: any) =>
 				statsKey(`${p.first_name} ${p.last_name} ${p.email}`).includes(statsKey(lsSearch.trim()))
 			)
 	);
 	let lsCounts = $derived({
-		total: baseFiltered.length,
-		pending: baseFiltered.filter((p: any) => p.status === 'pending').length,
-		rejected: baseFiltered.filter((p: any) => p.status === 'rejected').length,
+		total: baseFiltered.filter((p: any) => !isArch(p)).length,
+		pending: baseFiltered.filter((p: any) => p.status === 'pending' && p.venue !== false && !isArch(p)).length,
+		archived: baseFiltered.filter((p: any) => isArch(p)).length,
+		rejected: baseFiltered.filter((p: any) => p.status === 'rejected' && !isArch(p)).length,
 		venu: baseFiltered.filter((p: any) => p.venue === true).length,
 		pasVenu: baseFiltered.filter((p: any) => p.venue === false).length
 	});
 	const ageOf = (d: string | null) =>
 		d ? Math.floor((Date.now() - new Date(d).getTime()) / 31557600000) : null;
-	const statusBar = (st: string) =>
-		st === 'rejected' ? 'border-l-red-400' : st === 'accepted' ? 'border-l-blue-500' : 'border-l-amber-400';
+	const statusBar = (p: any) =>
+		p.venue === false && p.status === 'pending'
+			? 'border-l-gray-300'
+			: p.status === 'rejected'
+				? 'border-l-red-400'
+				: p.status === 'accepted'
+					? 'border-l-blue-500'
+					: 'border-l-amber-400';
 
 	let statsPage = $state(1);
 	let statsPaged = $derived(statsPlayers.slice((statsPage - 1) * 10, (statsPage + 0) * 10));
@@ -1748,7 +1765,7 @@
 							...(viewMode === 'talent_days'
 								? [{ label: 'Édition', value: tdTab, def: 'current', options: [['current', 'Édition en cours'], ['history', 'Historique']], set: (v: string) => (tdTab = v as any) }]
 								: []),
-							{ label: 'Statut', value: lsStatus, def: 'all', options: [['all', 'Tous', lsCounts.total], ['pending', 'À traiter', lsCounts.pending], ['rejected', 'Refusés', lsCounts.rejected]], set: (v: string) => (lsStatus = v as any) },
+							{ label: 'Statut', value: lsStatus, def: 'all', options: [['all', 'Tous', lsCounts.total], ['pending', 'À traiter', lsCounts.pending], ['rejected', 'Refusés', lsCounts.rejected], ['archived', 'Archivés', lsCounts.archived]], set: (v: string) => (lsStatus = v as any) },
 							{ label: 'Venue', value: presenceFilter, def: 'all', options: [['all', 'Tous'], ['venu', 'Venus'], ['pas_venu', 'Pas venus'], ['inconnu', 'Non renseignés']], set: (v: string) => (presenceFilter = v as any) },
 							{ label: 'Genre', value: genderFilter, def: 'all', options: [['all', 'Tous'], ['fille', 'Filles'], ['garcon', 'Garçons']], set: (v: string) => (genderFilter = v as any) }
 						]}
@@ -1871,7 +1888,7 @@
 			<div class="flex flex-col gap-2 print:hidden">
 				{#each pagedPlayers as player (player.id)}
 					{@const age = ageOf(player.birth_date)}
-					<div class="rounded-2xl border-l-4 bg-white shadow-sm {statusBar(player.status)}">
+					<div class="rounded-2xl border-l-4 bg-white shadow-sm {statusBar(player)}">
 						<div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
 							<span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dark text-xs font-semibold text-white">{initials(player)}</span>
 							<div class="min-w-0 flex-1 basis-52">
@@ -1891,6 +1908,16 @@
 									class="rounded-xl bg-[#f4f5f7] px-3 py-2 text-xs text-dark-accent hover:bg-[#eceef1]"
 									aria-expanded={expandedId === player.id}
 								>{expandedId === player.id ? 'Fermer' : 'Détails'}</button>
+								{#if player.status !== 'accepted' && (!isArch(player) || player.archived === true)}
+									<form method="POST" action="?/archivePlayer" use:enhance={() => async ({ result, update }) => {
+										if (result.type === 'failure') alert(String((result.data as any)?.error ?? 'Erreur'));
+										await update({ reset: false });
+									}}>
+										<input type="hidden" name="id" value={player.id} />
+										<input type="hidden" name="archived" value={isArch(player) ? 'false' : 'true'} />
+										<button class="rounded-xl bg-[#f4f5f7] px-3 py-2 text-xs text-dark-accent hover:bg-[#eceef1]">{isArch(player) ? 'Désarchiver' : 'Archiver'}</button>
+									</form>
+								{/if}
 							</div>
 						</div>
 

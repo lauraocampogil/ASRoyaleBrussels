@@ -1,6 +1,7 @@
 import { PUBLIC_DIRECTUS_URL } from '$env/static/public';
 import { env } from '$env/dynamic/private';
 import { parseJsonField } from '$lib/server/registrations';
+import { autoArchived, isNoShow } from '$lib/archive';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ fetch }) => {
@@ -38,27 +39,21 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	const essaiEmails = new Set(
 		rows.filter((r) => r.type !== 'talent_days').map((r) => String(r.email ?? '').toLowerCase())
 	);
-	const TWO_WEEKS = 14 * 24 * 3600 * 1000;
 
 	const players = rows
 		.map((r) => {
 			const dossier = parseJsonField<Record<string, any>>(r.dossier);
 			const hasDossier = !!dossier && Object.keys(dossier).length > 0;
 			const status: string = r.status ?? 'pending';
-			const isTalent = r.type === 'talent_days';
 
-			// « Pas venu » : visible 2 semaines seulement (après l'événement ou l'inscription),
-			// puis archivé (il reste dans Talent Day > Historique / Faire un essai).
-			const noShow =
-				status !== 'accepted' &&
-				(r.venue === false || (isTalent && talentDayPassed && status === 'pending' && r.venue !== true));
-
+			// « Pas venu » : visible 7 jours, puis archivé automatiquement (voir $lib/archive.ts).
+			const row = { ...r, status };
+			const ctx = { talentDayDate, talentDayPassed, essaiEmails };
 			let stage: string;
-			if (noShow) {
-				const ref = Date.parse(isTalent ? talentDayDate : String(r.date_created ?? ''));
-				const recent = Number.isNaN(ref) || Date.now() - ref < TWO_WEEKS;
-				const superseded = isTalent && essaiEmails.has(String(r.email ?? '').toLowerCase());
-				stage = recent && !superseded ? 'absent' : 'archive';
+			if (status !== 'accepted' && (r.archived === true || autoArchived(row, ctx))) {
+				stage = 'archived';
+			} else if (isNoShow(row, talentDayPassed)) {
+				stage = 'absent';
 			} else if (status === 'accepted') {
 				stage = hasDossier ? 'complete' : 'accepted';
 			} else {

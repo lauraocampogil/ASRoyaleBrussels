@@ -167,7 +167,7 @@ function buildAcceptanceEmail(opts: {
 		<p>Nous avons le plaisir de t'annoncer que ta candidature a été <strong>acceptée</strong>. Bienvenue chez Brussels Summit Academy !</p>
 
 		<p style="margin:24px 0 8px; font-weight:600;">On t'attend ce week-end !</p>
-		<p style="margin:0 0 8px;">Tu es attendu(e) pour une première séance avec nous, <strong>samedi 7 ou dimanche 8 novembre</strong> (au choix) :</p>
+		<p style="margin:0 0 8px;">Tu es attendu(e) pour une première séance avec nous, <strong>${MAKEUP.dates}</strong> (au choix) :</p>
 		<table style="width:100%; border-collapse:collapse; margin:0 0 20px;">
 			<tr>
 				<td style="padding:4px 0; color:#555; width:90px;">Horaire</td>
@@ -178,7 +178,7 @@ function buildAcceptanceEmail(opts: {
 				<td style="padding:4px 0; font-weight:600;">Centre Nelson Mandela<br/>Rue de Ransbeek 227, 1120 Bruxelles</td>
 			</tr>
 		</table>
-		<p style="margin:0 0 20px; font-size:14px; color:#333;">Pense à apporter ta tenue de sport complète, tes crampons, ta carte d'identité originale et une bouteille d'eau. Dis-nous quel jour tu viens en écrivant à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
+		<p style="margin:0 0 20px; font-size:14px; color:#333;">Pense à apporter ta tenue de sport complète, tes crampons, ta carte d'identité originale et une bouteille d'eau. Dis-nous quel jour tu viens en nous écrivant sur WhatsApp au ${WA_LINK}. Pour toute autre question, écris-nous sur WhatsApp ou par email à ${MAIL_LINK}.</p>
 
 		<p style="margin:24px 0 8px; font-weight:600;">Pour finaliser ton inscription :</p>
 		<ol style="margin:0 0 20px; padding-left:20px; color:#333;">
@@ -197,7 +197,7 @@ function buildAcceptanceEmail(opts: {
 		</table>
 		<p style="font-size:13px; color:#555;">Les modalités de paiement te seront communiquées avec ton contrat d'adhésion.</p>
 
-		<p>Une question ? Écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
+		<p>Une question ? Écris-nous sur WhatsApp au ${WA_LINK} ou par email à ${MAIL_LINK}.</p>
 		<p style="margin-top:24px;">À très vite sur le terrain,<br/>L'équipe Brussels Summit Academy</p>
 	`;
 	return { subject: "Bienvenue chez Brussels Summit Academy : ta candidature est acceptée !", html: wrapEmail(content) };
@@ -335,8 +335,46 @@ export async function sendStaffNotificationEmail(opts: {
 
 // ---- Rattrapage : email aux joueurs qui n'ont pas pu venir au Talent Day ----
 // Modifie ces valeurs si les dates ou les horaires changent.
+// Contact du staff (questions des joueurs). Le WhatsApp sert surtout à prévenir quel jour le joueur vient.
+const WA_LINK = '<a href="https://wa.me/32491328986" style="color:#1807b9;">+32 491 32 89 86</a>';
+const MAIL_LINK =
+	'<a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>';
+
+// Prochain week-end (samedi + dimanche), calculé automatiquement à chaque envoi (heure de Bruxelles).
+function nextWeekendLabel(): string {
+	const parts = new Intl.DateTimeFormat('en-CA', {
+		timeZone: 'Europe/Brussels',
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit'
+	})
+		.format(new Date())
+		.split('-')
+		.map(Number);
+	const today = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+	const dow = today.getUTCDay(); // 0 = dimanche … 6 = samedi
+	// Samedi (ou aujourd'hui s'il est samedi) ; le dimanche passe au week-end suivant.
+	const toSaturday = dow === 6 ? 0 : (6 - dow + 7) % 7;
+	const sat = new Date(today);
+	sat.setUTCDate(sat.getUTCDate() + toSaturday);
+	const sun = new Date(sat);
+	sun.setUTCDate(sun.getUTCDate() + 1);
+
+	const fmt = (d: Date, withMonth: boolean) =>
+		new Intl.DateTimeFormat('fr-BE', {
+			timeZone: 'UTC',
+			weekday: 'long',
+			day: 'numeric',
+			...(withMonth ? { month: 'long' } : {})
+		}).format(d);
+	const sameMonth = sat.getUTCMonth() === sun.getUTCMonth();
+	return `${fmt(sat, !sameMonth)} ou ${fmt(sun, true)}`;
+}
+
 const MAKEUP = {
-	dates: 'samedi 7 ou dimanche 8 novembre',
+	get dates() {
+		return nextWeekendLabel();
+	},
 	girls: 'de 17h00 à 18h30',
 	boys: 'de 17h30 à 19h00'
 };
@@ -377,7 +415,7 @@ export async function sendMakeupEmails(
 				<li>Ta carte d'identité originale</li>
 				<li>Une bouteille d'eau</li>
 			</ul>
-			<p>Pour nous dire quel jour tu viens, ou pour toute question, écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
+			<p>Pour nous dire quel jour tu viens, écris-nous sur WhatsApp au ${WA_LINK}. Pour toute autre question, écris-nous sur WhatsApp ou par email à ${MAIL_LINK}.</p>
 			<p style="margin-top:24px;">À très vite sur le terrain,<br/>L'équipe Brussels Summit Academy</p>
 		`;
 		return {
@@ -435,7 +473,7 @@ export async function sendSecondChanceEmail(opts: {
 			<li>Ta carte d'identité originale</li>
 			<li>Une bouteille d'eau</li>
 		</ul>
-		<p>Pour nous dire quel jour tu viens, ou pour toute question, écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
+		<p>Pour nous dire quel jour tu viens, écris-nous sur WhatsApp au ${WA_LINK}. Pour toute autre question, écris-nous sur WhatsApp ou par email à ${MAIL_LINK}.</p>
 		<p style="margin-top:24px;">Nous espérons te revoir très vite,<br/>L'équipe Brussels Summit Academy</p>
 	`;
 	await send({
@@ -511,7 +549,7 @@ function buildAcceptedInfoEmail(opts: {
 
 		${formBlock}
 
-		<p>Une question ? Écris-nous à <a href="mailto:brussels@summitacademy-info.com" style="color:#1807b9;">brussels@summitacademy-info.com</a>.</p>
+		<p>Une question ? Écris-nous sur WhatsApp au ${WA_LINK} ou par email à ${MAIL_LINK}.</p>
 		<p style="margin-top:24px;">À dimanche sur le terrain,<br/>L'équipe Brussels Summit Academy</p>
 	`;
 	return {
