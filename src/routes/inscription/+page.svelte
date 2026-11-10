@@ -108,9 +108,9 @@
 					<span class="h-px w-6 bg-primary"></span>
 				</p>
 			{/if}
-			{#if data.title}
+			{#if activeTab === 'academie' || data.title}
 				<h1 class="font-clash text-mobile-title-xl uppercase text-dark md:text-title-xl">
-					{data.title}
+					{activeTab === 'academie' ? 'Faire un essai' : data.title}
 				</h1>
 			{/if}
 		</div>
