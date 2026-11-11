@@ -110,8 +110,13 @@
 			{/if}
 			{#if activeTab === 'academie' || data.title}
 				<h1 class="font-clash text-mobile-title-xl uppercase text-dark md:text-title-xl">
-					{activeTab === 'academie' ? 'Faire un essai' : data.title}
+					{acceptedLink ? "Joueur·se officiel·le de l'académie" : activeTab === 'academie' ? 'Faire un essai' : data.title}
 				</h1>
+			{/if}
+			{#if acceptedLink}
+				<p class="max-w-xl text-dark/70">
+					Veuillez remplir le formulaire pour compléter l'affiliation.
+				</p>
 			{/if}
 		</div>
 

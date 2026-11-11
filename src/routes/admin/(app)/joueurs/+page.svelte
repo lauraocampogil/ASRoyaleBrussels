@@ -433,11 +433,11 @@
 						<span>Total payé</span><span class="text-xl font-semibold text-dark">{total} €</span>
 					</div>
 					<ul class="mb-6 divide-y divide-dark-accent/10 rounded-2xl border border-dark-accent/10 text-sm">
-						{#each [...p.paiements].reverse() as e}
+						{#each [...p.paiements].filter((x) => x.type !== 'rappel').reverse() as e}
 							<li class="flex items-center justify-between px-4 py-3">
 								<span>
 									<span class="font-medium text-dark">{e.type === 'annuel' ? 'Cotisation annuelle' : monthLabel(e.mois)}</span>
-									<span class="text-dark-accent"> · payé le {fmtDate(e.date)}</span>
+									<span class="text-dark-accent"> · payé le {fmtDate(e.date)}</span>{#if e.note}<span class="ml-1 rounded bg-yellow-50 px-2 py-0.5 text-xs text-yellow-800">📝 {e.note}</span>{/if}
 								</span>
 								<span class="flex items-center gap-3">
 									<b>{e.montant} €</b>

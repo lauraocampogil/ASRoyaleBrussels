@@ -47,6 +47,18 @@
 	let payPage = $state(1);
 	const PAY_SIZE = 10;
 	const payToday = new Date().toISOString().slice(0, 10);
+	let payDateSel = $state(payToday);
+	let payEditId = $state<number | null>(null);
+	const remindEnhance = (name: string): SubmitFunction => ({ cancel }) => {
+		if (!confirm(`Envoyer un rappel de paiement par email à ${name} ?`)) {
+			cancel();
+			return;
+		}
+		return async ({ result, update }) => {
+			if (result.type === 'failure') alert(String((result.data as any)?.error ?? 'Erreur'));
+			await update({ reset: false });
+		};
+	};
 	const feeOf = (p: any) => (normGender(p.gender) === 'fille' ? FEES.monthly.fille : FEES.monthly.garcon);
 	function shiftPayMonth(delta: number) {
 		const [y, m] = payMonth.split('-').map(Number);
@@ -58,6 +70,7 @@
 			p,
 			month: monthEntry(p, payMonth),
 			annual: annualEntry(p),
+			rappel: payList(p).find((e: any) => e.type === 'rappel' && e.mois === payMonth),
 			fee: feeOf(p)
 		}))
 	);
@@ -1489,6 +1502,7 @@
 					<option value="unpaid">Impayés ({payRows.length - payPaidCount})</option>
 					<option value="paid">Payés ({payPaidCount})</option>
 				</select>
+				<label class="flex items-center gap-2 rounded-xl border border-dark-accent/10 bg-white px-3 py-1.5 text-xs text-dark-accent shadow-sm">Date du paiement<input type="date" bind:value={payDateSel} class="rounded-lg bg-[#f4f5f7] px-2 py-1 text-sm text-dark" /></label>
 				<input bind:value={paySearch} placeholder="Rechercher un joueur…" class="min-w-52 flex-1 rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-4 py-2 text-sm" />
 			</div>
 
@@ -1526,7 +1540,7 @@
 												<input type="hidden" name="paid" value={r.p.id} />
 												<input type="hidden" name="type" value="mensuel" />
 												<input type="hidden" name="mois" value={payMonth} />
-												<input type="hidden" name="date" value={payToday} />
+												<input type="hidden" name="date" value={payDateSel} />
 											{/if}
 											<input
 												type="checkbox"
@@ -1544,6 +1558,39 @@
 												<span class="text-xs text-amber-700">À payer · {r.fee} €</span>
 											{/if}
 										</form>
+										<div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
+											{#if r.month}
+												{#if r.month.note}<span class="rounded bg-yellow-50 px-2 py-0.5 text-yellow-800">📝 {r.month.note}</span>{/if}
+												<button type="button" onclick={() => (payEditId = payEditId === r.p.id ? null : r.p.id)} class="text-primary underline">Date / note</button>
+											{:else if payMonth <= currentMonth}
+												<form method="POST" action="?/sendPaymentReminder" use:enhance={remindEnhance(`${r.p.first_name} ${r.p.last_name}`)}>
+													<input type="hidden" name="id" value={r.p.id} />
+													<input type="hidden" name="mois" value={payMonth} />
+													<button class="rounded-lg bg-amber-100 px-2.5 py-1 font-medium text-amber-800 hover:bg-amber-200">✉ Rappel email</button>
+												</form>
+												{#if r.rappel}<span class="text-dark-accent">Rappel envoyé le {new Date(r.rappel.date).toLocaleDateString('fr-BE')}</span>{/if}
+											{/if}
+										</div>
+										{#if payEditId === r.p.id && r.month}
+											<form method="POST" action="?/updatePayment" use:enhance={() => async ({ result, update }) => {
+												if (result.type === 'failure') alert(String((result.data as any)?.error ?? 'Erreur'));
+												else payEditId = null;
+												await update({ reset: false });
+											}} class="mt-2 flex flex-col gap-2 rounded-xl bg-[#f4f5f7] p-3">
+												<input type="hidden" name="id" value={r.p.id} />
+												<input type="hidden" name="entry" value={r.month.id} />
+												<label class="text-xs text-dark-accent">Date du paiement
+													<input type="date" name="date" required value={String(r.month.date).slice(0, 10)} class="mt-1 block rounded-lg border border-dark-accent/15 bg-white px-2 py-1.5 text-sm text-dark" />
+												</label>
+												<label class="text-xs text-dark-accent">Note / remarque
+													<textarea name="note" rows="2" placeholder="Ex. payé en cash, paiera le reste vendredi…" class="mt-1 block w-full rounded-lg border border-dark-accent/15 bg-white px-2 py-1.5 text-sm text-dark">{r.month.note ?? ''}</textarea>
+												</label>
+												<div class="flex gap-2">
+													<button class="rounded-lg bg-dark px-3 py-1.5 text-xs font-medium text-white">Enregistrer</button>
+													<button type="button" onclick={() => (payEditId = null)} class="rounded-lg bg-white px-3 py-1.5 text-xs text-dark-accent">Annuler</button>
+												</div>
+											</form>
+										{/if}
 									</td>
 									<td class="px-3 py-3">
 										<form method="POST" action={r.annual ? '?/deletePayment' : '?/savePayments'} use:enhance class="flex items-center gap-3">
@@ -1553,7 +1600,7 @@
 											{:else}
 												<input type="hidden" name="paid" value={r.p.id} />
 												<input type="hidden" name="type" value="annuel" />
-												<input type="hidden" name="date" value={payToday} />
+												<input type="hidden" name="date" value={payDateSel} />
 											{/if}
 											<input
 												type="checkbox"
@@ -1846,14 +1893,16 @@
 								</button>
 								{#if makeupResult}<span class="text-xs text-dark-accent">{makeupResult}</span>{/if}
 							</form>
+					{/if}
+					{#if viewMode === 'talent_days' || viewMode === 'academie'}
 							<button
 								type="button"
 								onclick={() => {
 									addError = '';
 								showAdd = true;
 							}}
-							title="Ajouter un joueur au Talent Day"
-							aria-label="Ajouter un joueur au Talent Day"
+							title={viewMode === 'academie' ? 'Ajouter un joueur (Faire un essai)' : 'Ajouter un joueur (Talent Day)'}
+							aria-label="Ajouter un joueur"
 							class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white transition-opacity hover:opacity-90"
 						>
 							<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
@@ -2195,7 +2244,8 @@
 				}}
 			class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
 		>
-			<h2 class="font-clash mb-4 text-lg text-dark">Ajouter un joueur (Talent Day)</h2>
+			<input type="hidden" name="type" value={viewMode === 'academie' ? 'academie' : 'talent_days'} />
+			<h2 class="font-clash mb-4 text-lg text-dark">Ajouter un joueur ({viewMode === 'academie' ? 'Faire un essai' : 'Talent Day'})</h2>
 			<div class="grid grid-cols-2 gap-3 text-sm">
 				<input name="first_name" required placeholder="Prénom *" class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2" />
 				<input name="last_name" required placeholder="Nom *" class="rounded-xl border border-dark-accent/10 bg-[#f4f5f7] px-3 py-2" />

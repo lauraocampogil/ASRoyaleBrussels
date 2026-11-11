@@ -571,3 +571,25 @@ export async function sendAcceptedInfoEmails(
 		if (error) throw new Error(`${error.name}: ${error.message}`);
 	}
 }
+
+
+// Rappel de paiement : envoyé à la main depuis le dashboard quand un joueur tarde à payer.
+export async function sendPaymentReminderEmail(opts: {
+	to: string;
+	firstName: string;
+	monthLabel: string;
+	amount: number;
+}) {
+	const content = `
+		<h2 style="margin:0 0 16px; font-size:20px; color:#1807b9;">Salut ${opts.firstName},</h2>
+		<p>Petit rappel : nous n'avons pas encore reçu ta mensualité de <strong>${opts.monthLabel}</strong> (<strong>${opts.amount} €</strong>).</p>
+		<p>Merci de la régler dès que possible auprès du staff. Si tu as déjà payé, ou si tu as besoin d'un délai, dis-le-nous simplement : écris-nous sur WhatsApp au ${WA_LINK} ou par email à ${MAIL_LINK}.</p>
+		<p style="margin-top:24px;">Merci !<br/>L'équipe Brussels Summit Academy</p>
+	`;
+	await send({
+		from: env.RESEND_FROM as string,
+		to: opts.to,
+		subject: `Rappel : mensualité de ${opts.monthLabel}`,
+		html: wrapEmail(content)
+	});
+}

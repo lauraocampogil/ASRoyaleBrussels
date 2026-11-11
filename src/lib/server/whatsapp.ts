@@ -5,7 +5,8 @@ import { env } from '$env/dynamic/private';
 // Réglage : variable d'environnement WHATSAPP_STAFF (Cloudflare Pages + .env), au format
 //   +32470000000:CLE_API_1,+32480000000:CLE_API_2
 // Chaque membre active d'abord CallMeBot (voir https://www.callmebot.com/blog/free-api-whatsapp-messages/) :
-// il envoie "I allow callmebot to send me messages" au +34 644 59 71 67 sur WhatsApp et reçoit sa clé.
+// il ajoute le numéro du bot affiché sur cette page, lui envoie "I allow callmebot to send me messages"
+// sur WhatsApp et reçoit sa clé. (Si le bot est « full », le numéro n'est pas affiché : réessayer plus tard.)
 function getRecipients(): { phone: string; apikey: string }[] {
 	return (env.WHATSAPP_STAFF ?? '')
 		.split(',')

@@ -9,7 +9,8 @@ import {
 	sendTalentDayReminderEmail,
 	sendMakeupEmails,
 	sendSecondChanceEmail,
-	sendAcceptedInfoEmails
+	sendAcceptedInfoEmails,
+	sendPaymentReminderEmail
 } from '$lib/server/email';
 import { cleanInstagram } from '$lib/instagram';
 import { parseJsonField, patchRegistration } from '$lib/server/registrations';
@@ -384,7 +385,7 @@ export const actions: Actions = {
 		}
 
 		const payload: Record<string, unknown> = {
-			type: 'talent_days',
+			type: str('type') === 'academie' ? 'academie' : 'talent_days',
 			first_name,
 			last_name,
 			email: email || null,
@@ -456,7 +457,8 @@ export const actions: Actions = {
 						type,
 						mois: type === 'mensuel' ? mois : null,
 						date,
-						montant
+						montant,
+						...(String(data.get('note') ?? '').trim() ? { note: String(data.get('note')).trim() } : {})
 					});
 					const patch = await patchRegistration(r.id, { paiements: list });
 					if (patch.ok) saved++;
@@ -464,6 +466,82 @@ export const actions: Actions = {
 		);
 
 		return { success: true, saved };
+	},
+
+	// Modifier la date et/ou la note d'un paiement déjà enregistré.
+	updatePayment: async ({ request, fetch }) => {
+		const data = await request.formData();
+		const id = String(data.get('id') ?? '');
+		const entry = String(data.get('entry') ?? '');
+		const date = String(data.get('date') ?? '');
+		const note = String(data.get('note') ?? '').trim();
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, { error: 'Date invalide.' });
+
+		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=paiements`, {
+			headers: getAuthHeaders()
+		});
+		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
+		const parsedList = parseJsonField((await res.json()).data?.paiements);
+		const list = Array.isArray(parsedList) ? (parsedList as Record<string, unknown>[]) : [];
+		const next = list.map((e) => {
+			if (e.id !== entry) return e;
+			const updated: Record<string, unknown> = { ...e, date };
+			if (note) updated.note = note;
+			else delete updated.note;
+			return updated;
+		});
+
+		const patch = await patchRegistration(id, { paiements: next });
+		if (!patch.ok) return fail(500, { error: "La modification a échoué." });
+		return { success: true };
+	},
+
+	// Rappel par email pour une mensualité impayée (trace gardée dans « paiements »).
+	sendPaymentReminder: async ({ request, fetch }) => {
+		const data = await request.formData();
+		const id = String(data.get('id') ?? '');
+		const mois = String(data.get('mois') ?? '');
+		if (!/^\d{4}-\d{2}$/.test(mois)) return fail(400, { error: 'Mois invalide.' });
+
+		const res = await fetch(
+			`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=id,email,first_name,gender,paiements`,
+			{ headers: getAuthHeaders() }
+		);
+		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
+		const r = (await res.json()).data;
+		if (!r?.email) return fail(400, { error: "Ce joueur n'a pas d'email." });
+
+		const parsed = parseJsonField(r.paiements);
+		const list: Record<string, unknown>[] = Array.isArray(parsed) ? parsed : [];
+		if (list.some((e) => e.type === 'mensuel' && e.mois === mois)) {
+			return fail(400, { error: 'Cette mensualité est déjà payée.' });
+		}
+
+		const g = String(r.gender ?? '').toLowerCase();
+		const isFemale = ['fille', 'femme', 'female', 'f', 'girl', 'woman'].includes(g);
+		const [y, m] = mois.split('-').map(Number);
+		const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+		try {
+			await sendPaymentReminderEmail({
+				to: r.email,
+				firstName: r.first_name,
+				monthLabel: `${months[m - 1]} ${y}`,
+				amount: isFemale ? 50 : 80
+			});
+		} catch (err) {
+			console.error('Payment reminder failed:', err);
+			return fail(500, { error: "L'email n'a pas pu être envoyé." });
+		}
+
+		list.push({
+			id: crypto.randomUUID(),
+			type: 'rappel',
+			mois,
+			date: new Date().toISOString().slice(0, 10),
+			montant: 0
+		});
+		await patchRegistration(id, { paiements: list });
+		return { success: true };
 	},
 
 	deletePayment: async ({ request, fetch }) => {

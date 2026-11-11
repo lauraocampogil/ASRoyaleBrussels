@@ -125,8 +125,8 @@
 	<input type="hidden" name="dossier_form" value="1" />
 
 	<p class="rounded-lg bg-primary/5 px-4 py-3 text-sm text-dark">
-		Les champs marqués d'un * sont obligatoires. Après étude du dossier, l'Academy contactera les
-		profils retenus pour la suite du processus.
+		Veuillez remplir le formulaire pour compléter l'affiliation. Les champs marqués d'un * sont
+		obligatoires.
 	</p>
 
 	<h2 class="font-clash text-title-md text-primary">Identité</h2>
