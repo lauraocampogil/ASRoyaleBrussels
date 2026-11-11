@@ -433,7 +433,7 @@
 						<span>Total payé</span><span class="text-xl font-semibold text-dark">{total} €</span>
 					</div>
 					<ul class="mb-6 divide-y divide-dark-accent/10 rounded-2xl border border-dark-accent/10 text-sm">
-						{#each [...p.paiements].filter((x) => x.type !== 'rappel').reverse() as e}
+						{#each [...p.paiements].filter((x) => x.type !== 'rappel' && x.type !== 'note').reverse() as e}
 							<li class="flex items-center justify-between px-4 py-3">
 								<span>
 									<span class="font-medium text-dark">{e.type === 'annuel' ? 'Cotisation annuelle' : monthLabel(e.mois)}</span>
@@ -451,6 +451,22 @@
 							<li class="px-4 py-6 text-center text-dark-accent">Aucun paiement enregistré.</li>
 						{/each}
 					</ul>
+					<form method="POST" action="/admin?/sendPaymentReminder" use:enhance={({ cancel }) => {
+						if (!confirm('Envoyer un rappel de paiement par email à ' + p.first_name + ' ?')) { cancel(); return; }
+						return async ({ result, update }) => {
+							if (result.type === 'failure') alert(String((result.data as any)?.error ?? 'Erreur'));
+							await update({ reset: false });
+						};
+					}} class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-amber-50 p-4 text-sm">
+						<input type="hidden" name="id" value={p.id} />
+						<label class="text-xs text-amber-900">Mois à rappeler
+							<input type="month" name="mois" value={thisMonth} class="mt-1 block rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-dark" />
+						</label>
+						<button class="rounded-xl bg-amber-500 px-4 py-2 font-medium text-white hover:bg-amber-600">✉ Envoyer un rappel par email</button>
+						{#each p.paiements.filter((x) => x.type === 'rappel').slice(-1) as r}
+							<span class="text-xs text-amber-900">Dernier rappel : {fmtDate(r.date)} ({monthLabel(r.mois)})</span>
+						{/each}
+					</form>
 					<form method="POST" action="/admin?/savePayments" use:enhance class="space-y-3 rounded-2xl border border-dark-accent/10 p-4 text-sm">
 						<h3 class="font-semibold text-dark">Enregistrer un paiement</h3>
 						<input type="hidden" name="paid" value={p.id} />

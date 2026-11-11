@@ -71,6 +71,7 @@
 			month: monthEntry(p, payMonth),
 			annual: annualEntry(p),
 			rappel: payList(p).find((e: any) => e.type === 'rappel' && e.mois === payMonth),
+			noteEntry: payList(p).find((e: any) => e.type === 'note' && e.mois === payMonth),
 			fee: feeOf(p)
 		}))
 	);
@@ -1562,7 +1563,11 @@
 											{#if r.month}
 												{#if r.month.note}<span class="rounded bg-yellow-50 px-2 py-0.5 text-yellow-800">📝 {r.month.note}</span>{/if}
 												<button type="button" onclick={() => (payEditId = payEditId === r.p.id ? null : r.p.id)} class="text-primary underline">Date / note</button>
-											{:else if payMonth <= currentMonth}
+											{:else}
+												{#if r.noteEntry}<span class="rounded bg-yellow-50 px-2 py-0.5 text-yellow-800">📝 {r.noteEntry.note}</span>{/if}
+												<button type="button" onclick={() => (payEditId = payEditId === r.p.id ? null : r.p.id)} class="text-primary underline">Note</button>
+											{/if}
+											{#if !r.month && payMonth <= currentMonth}
 												<form method="POST" action="?/sendPaymentReminder" use:enhance={remindEnhance(`${r.p.first_name} ${r.p.last_name}`)}>
 													<input type="hidden" name="id" value={r.p.id} />
 													<input type="hidden" name="mois" value={payMonth} />
@@ -1571,6 +1576,23 @@
 												{#if r.rappel}<span class="text-dark-accent">Rappel envoyé le {new Date(r.rappel.date).toLocaleDateString('fr-BE')}</span>{/if}
 											{/if}
 										</div>
+										{#if payEditId === r.p.id && !r.month}
+											<form method="POST" action="?/savePaymentNote" use:enhance={() => async ({ result, update }) => {
+												if (result.type === 'failure') alert(String((result.data as any)?.error ?? 'Erreur'));
+												else payEditId = null;
+												await update({ reset: false });
+											}} class="mt-2 flex flex-col gap-2 rounded-xl bg-[#f4f5f7] p-3">
+												<input type="hidden" name="id" value={r.p.id} />
+												<input type="hidden" name="mois" value={payMonth} />
+												<label class="text-xs text-dark-accent">Note sur le paiement de {monthLabel(payMonth)}
+													<textarea name="note" rows="2" placeholder="Ex. a promis de payer vendredi…" class="mt-1 block w-full rounded-lg border border-dark-accent/15 bg-white px-2 py-1.5 text-sm text-dark">{r.noteEntry?.note ?? ''}</textarea>
+												</label>
+												<div class="flex gap-2">
+													<button class="rounded-lg bg-dark px-3 py-1.5 text-xs font-medium text-white">Enregistrer</button>
+													<button type="button" onclick={() => (payEditId = null)} class="rounded-lg bg-white px-3 py-1.5 text-xs text-dark-accent">Annuler</button>
+												</div>
+											</form>
+										{/if}
 										{#if payEditId === r.p.id && r.month}
 											<form method="POST" action="?/updatePayment" use:enhance={() => async ({ result, update }) => {
 												if (result.type === 'failure') alert(String((result.data as any)?.error ?? 'Erreur'));

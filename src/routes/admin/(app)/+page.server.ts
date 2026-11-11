@@ -496,6 +496,36 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
+	// Note sur un mois (même impayé) : entrée « note » dans paiements.
+	savePaymentNote: async ({ request, fetch }) => {
+		const data = await request.formData();
+		const id = String(data.get('id') ?? '');
+		const mois = String(data.get('mois') ?? '');
+		const note = String(data.get('note') ?? '').trim();
+		if (!/^\d{4}-\d{2}$/.test(mois)) return fail(400, { error: 'Mois invalide.' });
+
+		const res = await fetch(`${PUBLIC_DIRECTUS_URL}/items/Registration/${id}?fields=paiements`, {
+			headers: getAuthHeaders()
+		});
+		if (!res.ok) return fail(404, { error: 'Joueur introuvable.' });
+		const parsed = parseJsonField((await res.json()).data?.paiements);
+		let list: Record<string, unknown>[] = Array.isArray(parsed) ? parsed : [];
+		list = list.filter((e) => !(e.type === 'note' && e.mois === mois));
+		if (note) {
+			list.push({
+				id: crypto.randomUUID(),
+				type: 'note',
+				mois,
+				date: new Date().toISOString().slice(0, 10),
+				montant: 0,
+				note
+			});
+		}
+		const patch = await patchRegistration(id, { paiements: list });
+		if (!patch.ok) return fail(500, { error: "La note n'a pas pu être enregistrée." });
+		return { success: true };
+	},
+
 	// Rappel par email pour une mensualité impayée (trace gardée dans « paiements »).
 	sendPaymentReminder: async ({ request, fetch }) => {
 		const data = await request.formData();
