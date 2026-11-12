@@ -337,6 +337,22 @@ export const actions: Actions = {
 	},
 
 	// Présence au Talent Day : oui / non (ou vide pour annuler).
+	// Le joueur ne souhaite plus continuer : il reste en base de données mais sort de tous les suivis.
+	setInactive: async ({ request }) => {
+		const data = await request.formData();
+		const id = String(data.get('id') ?? '');
+		const inactive = String(data.get('inactive') ?? '') === 'true';
+		if (!id) return fail(400, { error: 'Joueur introuvable.' });
+
+		const patch = await patchRegistration(id, { inactive });
+		if (!patch.ok) {
+			return fail(500, {
+				error: "L'action a échoué : vérifie que le champ « inactive » (Boolean) existe dans Registration."
+			});
+		}
+		return { success: true };
+	},
+
 	// Archiver / désarchiver une demande (sort des listes de travail, reste consultable).
 	archivePlayer: async ({ request }) => {
 		const data = await request.formData();

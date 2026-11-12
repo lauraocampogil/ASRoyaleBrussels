@@ -12,7 +12,9 @@
 		{ key: 'pending', group: 'autres', label: 'À traiter', short: 'À traiter', dot: 'bg-amber-400', badge: 'bg-amber-100 text-amber-800', bar: 'border-l-amber-400' },
 		{ key: 'absent', group: 'autres', label: 'Pas venus', short: 'Pas venus', dot: 'bg-gray-400', badge: 'bg-gray-200 text-gray-700', bar: 'border-l-gray-400' },
 		{ key: 'archived', group: 'autres', label: 'Archivés', short: 'Archivés', dot: 'bg-gray-300', badge: 'bg-gray-100 text-gray-500', bar: 'border-l-gray-200' },
+		{ key: 'left', group: 'autres', label: 'Ne continuent plus', short: 'Anciens', dot: 'bg-slate-400', badge: 'bg-slate-200 text-slate-600', bar: 'border-l-slate-300' },
 		{ key: 'rejected', group: 'autres', label: 'Refusés', short: 'Refusés', dot: 'bg-red-400', badge: 'bg-red-100 text-red-700', bar: 'border-l-red-400' }
+		,{ key: 'all', group: 'autres', label: 'Tous', short: 'Tous', dot: 'bg-dark', badge: 'bg-dark/10 text-dark', bar: 'border-l-dark/30' }
 	];
 
 	let search = $state('');
@@ -27,7 +29,7 @@
 	let filtered = $derived(
 		data.players.filter(
 			(p: any) =>
-				p.stage === stageFilter &&
+				(stageFilter === 'all' || p.stage === stageFilter) &&
 				(typeFilter === 'all' || p.type === typeFilter) &&
 				norm(`${p.first_name} ${p.last_name} ${p.email}`).includes(norm(search.trim()))
 		)
@@ -57,7 +59,7 @@
 	});
 
 	let counts = $derived(
-		Object.fromEntries(STAGES.map((s) => [s.key, data.players.filter((p: any) => p.stage === s.key).length]))
+		Object.fromEntries(STAGES.map((s) => [s.key, s.key === 'all' ? data.players.length : data.players.filter((p: any) => p.stage === s.key).length]))
 	);
 
 	let selectedId = $derived(page.url.searchParams.get('joueur'));
@@ -276,7 +278,7 @@
 		{/if}
 	{:else}
 		<div class="grid gap-4 lg:grid-cols-5">
-			{#each STAGES.filter((x) => x.key !== 'archived') as s}
+			{#each STAGES.filter((x) => !['archived', 'left', 'all'].includes(x.key)) as s}
 				<section class="rounded-2xl bg-[#eceef1] p-3">
 					<h2 class="flex items-center gap-2 px-1 text-sm font-semibold text-dark">
 						<span class="h-2 w-2 rounded-full {s.dot}"></span>{s.label}
@@ -338,6 +340,17 @@
 						<button class="rounded-xl bg-dark px-4 py-2 text-sm font-medium text-white"
 							onclick={(e) => { if (!confirm('Changer le statut peut envoyer un email au joueur. Continuer ?')) e.preventDefault(); }}
 							>Appliquer</button>
+					</form>
+					<form method="POST" action="/admin?/setInactive" use:enhance={({ cancel }) => {
+						if (p.stage !== 'left' && !confirm(p.first_name + ' ne souhaite plus continuer avec nous ? Le joueur reste dans la base de données mais sort de tous les suivis (présences, paiements, stats).')) { cancel(); return; }
+						return async ({ result, update }) => {
+							if (result.type === 'failure') alert(String((result.data as any)?.error ?? 'Erreur'));
+							await update({ reset: false });
+						};
+					}}>
+						<input type="hidden" name="id" value={p.id} />
+						<input type="hidden" name="inactive" value={p.stage === 'left' ? 'false' : 'true'} />
+						<button class="rounded-xl px-4 py-2 text-sm font-medium {p.stage === 'left' ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}">{p.stage === 'left' ? 'Réactiver' : 'Ne souhaite plus continuer'}</button>
 					</form>
 					{#if p.status !== 'accepted' && (p.stage !== 'archived' || p.archived === true)}
 						<form method="POST" action="/admin?/archivePlayer" use:enhance={() => async ({ result, update }) => {

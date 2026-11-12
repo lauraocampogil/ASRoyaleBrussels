@@ -50,7 +50,9 @@ export const load: PageServerLoad = async ({ fetch }) => {
 			const row = { ...r, status };
 			const ctx = { talentDayDate, talentDayPassed, essaiEmails };
 			let stage: string;
-			if (status !== 'accepted' && (r.archived === true || autoArchived(row, ctx))) {
+			if (r.inactive === true) {
+				stage = 'left';
+			} else if (status !== 'accepted' && (r.archived === true || autoArchived(row, ctx))) {
 				stage = 'archived';
 			} else if (isNoShow(row, talentDayPassed)) {
 				stage = 'absent';

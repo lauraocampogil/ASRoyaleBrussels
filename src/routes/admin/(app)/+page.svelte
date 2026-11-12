@@ -316,6 +316,7 @@
 	const isArch = (p: any) =>
 		p.status !== 'accepted' && (p.archived === true || autoArchived(p, archiveCtx));
 	const stageOfPlayer = (p: any) => {
+		if (p.inactive === true) return 'left';
 		if (isArch(p)) return 'archive';
 		if (isNoShow(p, archiveCtx.talentDayPassed)) return 'absent';
 		if (p.status === 'accepted') return hasDossierOf(p) ? 'complete' : 'accepted';
@@ -325,10 +326,10 @@
 	let absentHistoryCount = $derived(data.players.filter((p: any) => stageOfPlayer(p) === 'absent').length);
 	let rejectedStageCount = $derived(data.players.filter((p: any) => stageOfPlayer(p) === 'rejected').length);
 	let dossierMissingCount = $derived(
-		data.players.filter((p: any) => p.status === 'accepted' && !hasDossierOf(p)).length
+		data.players.filter((p: any) => p.status === 'accepted' && p.inactive !== true && !hasDossierOf(p)).length
 	);
 	let memberCount = $derived(
-		data.players.filter((p: any) => p.status === 'accepted' && hasDossierOf(p)).length
+		data.players.filter((p: any) => p.status === 'accepted' && p.inactive !== true && hasDossierOf(p)).length
 	);
 	let presentCount = $derived(tdAll.filter((p: any) => p.venue === true).length);
 	let absentCount = $derived(tdAll.filter((p: any) => p.venue === false).length);
@@ -548,12 +549,14 @@
 	}
 
 	let talentDayPlayers = $derived(
-		data.players.filter((p: any) => p.type === 'talent_days' && p.status !== 'accepted')
+		data.players.filter((p: any) => p.type === 'talent_days')
 	);
 	let academiePlayers = $derived(
-		data.players.filter((p: any) => p.type === 'academie' && p.status !== 'accepted')
+		data.players.filter((p: any) => p.type === 'academie')
 	);
-	let acceptedPlayers = $derived(data.players.filter((p: any) => p.status === 'accepted'));
+	let acceptedPlayers = $derived(
+		data.players.filter((p: any) => p.status === 'accepted' && p.inactive !== true)
+	);
 	// Seuls les joueurs acceptés ayant rempli tout le formulaire de dossier sont suivis (présences, paiements).
 	let memberPlayers = $derived(acceptedPlayers.filter((p: any) => hasDossierOf(p)));
 	let notMemberYet = $derived(acceptedPlayers.filter((p: any) => !hasDossierOf(p)));
@@ -591,7 +594,7 @@
 	// Édition en cours : visible jusqu'à 7 jours après l'événement, puis vide (tout passe en historique).
 	// Une fois l'édition passée, les « pas venus » partent directement en historique.
 	let tdShown = $derived(
-		tdTab === 'history'
+		tdTab === 'history' || lsStatus === 'all'
 			? talentDayPlayers
 			: tdArchived
 				? []
@@ -608,7 +611,7 @@
 				: acceptedPlayers
 	);
 
-	let lsStatus = $state<'all' | 'pending' | 'rejected' | 'archived'>('all');
+	let lsStatus = $state<'all' | 'pending' | 'accepted' | 'rejected' | 'absent' | 'archived' | 'left'>('pending');
 	let lsSearch = $state('');
 	let expandedId = $state<number | null>(null);
 	let filteredPlayers = $derived(
@@ -624,33 +627,34 @@
 						? p.venue === false
 						: p.venue !== true && p.venue !== false
 		)
-			.filter((p: any) =>
-				lsStatus === 'archived'
-					? isArch(p)
-					: isArch(p)
-						? false
-						: lsStatus === 'all'
-							? true
-							: lsStatus === 'pending'
-								? p.status === 'pending' && p.venue !== false
-								: p.status === lsStatus
-			)
+			.filter((p: any) => {
+				const st = stageOfPlayer(p);
+				if (lsStatus === 'all') return true;
+				if (lsStatus === 'accepted') return p.status === 'accepted' && st !== 'left';
+				if (lsStatus === 'archived') return st === 'archive';
+				return st === lsStatus;
+			})
 			.filter((p: any) =>
 				statsKey(`${p.first_name} ${p.last_name} ${p.email}`).includes(statsKey(lsSearch.trim()))
 			)
 	);
 	let lsCounts = $derived({
-		total: baseFiltered.filter((p: any) => !isArch(p)).length,
-		pending: baseFiltered.filter((p: any) => p.status === 'pending' && p.venue !== false && !isArch(p)).length,
-		archived: baseFiltered.filter((p: any) => isArch(p)).length,
-		rejected: baseFiltered.filter((p: any) => p.status === 'rejected' && !isArch(p)).length,
+		total: baseFiltered.length,
+		pending: baseFiltered.filter((p: any) => stageOfPlayer(p) === 'pending').length,
+		accepted: baseFiltered.filter((p: any) => p.status === 'accepted' && stageOfPlayer(p) !== 'left').length,
+		rejected: baseFiltered.filter((p: any) => stageOfPlayer(p) === 'rejected').length,
+		absent: baseFiltered.filter((p: any) => stageOfPlayer(p) === 'absent').length,
+		archived: baseFiltered.filter((p: any) => stageOfPlayer(p) === 'archive').length,
+		left: baseFiltered.filter((p: any) => stageOfPlayer(p) === 'left').length,
 		venu: baseFiltered.filter((p: any) => p.venue === true).length,
 		pasVenu: baseFiltered.filter((p: any) => p.venue === false).length
 	});
 	const ageOf = (d: string | null) =>
 		d ? Math.floor((Date.now() - new Date(d).getTime()) / 31557600000) : null;
 	const statusBar = (p: any) =>
-		p.venue === false && p.status === 'pending'
+		p.inactive === true
+			? 'border-l-slate-300'
+			: p.venue === false && p.status === 'pending'
 			? 'border-l-gray-300'
 			: p.status === 'rejected'
 				? 'border-l-red-400'
@@ -1834,7 +1838,7 @@
 							...(viewMode === 'talent_days'
 								? [{ label: 'Édition', value: tdTab, def: 'current', options: [['current', 'Édition en cours'], ['history', 'Historique']], set: (v: string) => (tdTab = v as any) }]
 								: []),
-							{ label: 'Statut', value: lsStatus, def: 'all', options: [['all', 'Tous', lsCounts.total], ['pending', 'À traiter', lsCounts.pending], ['rejected', 'Refusés', lsCounts.rejected], ['archived', 'Archivés', lsCounts.archived]], set: (v: string) => (lsStatus = v as any) },
+							{ label: 'Statut', value: lsStatus, def: 'pending', options: [['all', 'Tous', lsCounts.total], ['pending', 'À traiter', lsCounts.pending], ['accepted', 'Acceptés', lsCounts.accepted], ['rejected', 'Refusés', lsCounts.rejected], ['absent', 'Pas venus', lsCounts.absent], ['archived', 'Archivés', lsCounts.archived], ['left', 'Anciens (ne continuent plus)', lsCounts.left]], set: (v: string) => (lsStatus = v as any) },
 							{ label: 'Venue', value: presenceFilter, def: 'all', options: [['all', 'Tous'], ['venu', 'Venus'], ['pas_venu', 'Pas venus'], ['inconnu', 'Non renseignés']], set: (v: string) => (presenceFilter = v as any) },
 							{ label: 'Genre', value: genderFilter, def: 'all', options: [['all', 'Tous'], ['fille', 'Filles'], ['garcon', 'Garçons']], set: (v: string) => (genderFilter = v as any) }
 						]}
