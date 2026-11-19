@@ -367,13 +367,12 @@
 		</label>
 		{/if}
 		<div class="sm:col-span-2">
-			<label class="mb-1 block text-dark/70" for="photo_club">Photo de toi avec le maillot de ton club actuel *</label>
+			<label class="mb-1 block text-dark/70" for="photo_club">Photo de toi avec le maillot de ton club actuel (facultatif)</label>
 			<input
 				type="file"
 				id="photo_club"
 				name="photo_club"
 				accept="image/*,.heic,.heif"
-				required
 				onchange={handlePhotoChange}
 				class="w-full rounded-md border border-dark/30 px-4 py-3 text-dark focus:border-primary focus:outline-none"
 			/>

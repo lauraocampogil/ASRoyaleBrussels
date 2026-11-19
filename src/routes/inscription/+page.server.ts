@@ -225,18 +225,20 @@ export const actions: Actions = {
 			if (parsed.error) return fail(400, { error: parsed.error, values });
 			dossier = parsed.dossier;
 
-			// Photo avec le club actuel (obligatoire)
+			// Photo avec le club actuel (facultative)
 			const photo = data.get('photo_club');
-			if (!(photo instanceof File) || photo.size === 0 || !photo.type.startsWith('image/')) {
-				return fail(400, {
-					error: 'Ajoute une photo de toi avec ton club actuel (JPG ou PNG).',
-					values
-				});
-			}
-			try {
-				dossier.photo_club = await uploadFile(photo, fetch);
-			} catch {
-				return fail(500, { error: "L'envoi de la photo a échoué, réessaie.", values });
+			if (photo instanceof File && photo.size > 0) {
+				if (!photo.type.startsWith('image/')) {
+					return fail(400, {
+						error: 'La photo doit être une image (JPG ou PNG).',
+						values
+					});
+				}
+				try {
+					dossier.photo_club = await uploadFile(photo, fetch);
+				} catch {
+					return fail(500, { error: "L'envoi de la photo a échoué, réessaie.", values });
+				}
 			}
 		}
 
