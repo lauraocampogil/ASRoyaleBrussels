@@ -17,6 +17,31 @@
 	let idBackError = $state('');
 	let photoPreview = $state<string | null>(null);
 	let photoError = $state('');
+	let clientError = $state('');
+
+	// Remplace le fichier d'un <input> par sa version allégée. Certains navigateurs (ex. navigateur
+	// intégré d'Instagram / Facebook, anciens iPhone) n'ont pas DataTransfer : on garde alors
+	// simplement le fichier d'origine au lieu de bloquer le formulaire.
+	function swapFile(input: HTMLInputElement, file: File) {
+		try {
+			const dt = new DataTransfer();
+			dt.items.add(file);
+			input.files = dt.files;
+		} catch (err) {
+			console.warn('Remplacement du fichier impossible :', err);
+		}
+	}
+
+	// Affiche clairement le champ obligatoire manquant (au lieu d'un blocage silencieux).
+	function onInvalid(e: Event) {
+		const el = e.target as HTMLElement;
+		const label =
+			el.closest('label')?.querySelector('span')?.textContent ??
+			el.closest('div')?.querySelector('span, label')?.textContent ??
+			'un champ';
+		clientError = `Champ à compléter ou à corriger : ${label.replace('*', '').trim()}`;
+		el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	}
 
 	async function handlePhotoChange(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
@@ -25,13 +50,16 @@
 		photoError = '';
 
 		converting = true;
-		const file = await toLightJpeg(original);
-		if (file !== original) {
-			const dt = new DataTransfer();
-			dt.items.add(file);
-			input.files = dt.files;
+		let file = original;
+		try {
+			file = await toLightJpeg(original);
+			if (file !== original) swapFile(input, file);
+		} catch (err) {
+			console.warn('Préparation de la photo impossible :', err);
+			file = original;
+		} finally {
+			converting = false;
 		}
-		converting = false;
 
 		if (!file.type.startsWith('image/') || /heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)) {
 			input.value = '';
@@ -48,13 +76,16 @@
 		if (!original) return;
 
 		converting = true;
-		const file = await toLightJpeg(original);
-		if (file !== original) {
-			const dt = new DataTransfer();
-			dt.items.add(file);
-			input.files = dt.files;
+		let file = original;
+		try {
+			file = await toLightJpeg(original);
+			if (file !== original) swapFile(input, file);
+		} catch (err) {
+			console.warn("Préparation de la carte d'identité impossible :", err);
+			file = original;
+		} finally {
+			converting = false;
 		}
-		converting = false;
 
 		const setError0 = (v: string) => (side === 'front' ? (idFrontError = v) : (idBackError = v));
 		if (/heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)) {
@@ -108,15 +139,27 @@
 <form
 	method="POST"
 	enctype="multipart/form-data"
+	oninvalidcapture={onInvalid}
 	use:enhance={({ cancel }) => {
 		if (submitting) {
 			cancel();
 			return;
 		}
 		submitting = true;
-		return async ({ update }) => {
+		clientError = '';
+		// Sécurité : si le serveur ne répond pas, on débloque le bouton et on prévient.
+		const timer = setTimeout(() => {
 			submitting = false;
-			await update();
+			clientError = "L'envoi prend trop de temps. Vérifie ta connexion et réessaie.";
+		}, 90000);
+		return async ({ result, update }) => {
+			clearTimeout(timer);
+			submitting = false;
+			if (result.type === 'error') {
+				clientError = 'Une erreur est survenue pendant l\'envoi. Réessaie dans un instant.';
+				return;
+			}
+			await update({ reset: false });
 		};
 	}}
 	class="flex flex-col gap-6"
@@ -486,8 +529,11 @@
 		</label>
 	</div>
 
+	{#if clientError}
+		<p class="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{clientError}</p>
+	{/if}
 	{#if form?.error}
-		<p class="text-sm text-red-600">{form.error}</p>
+		<p class="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{form.error}</p>
 	{/if}
 
 	<Button

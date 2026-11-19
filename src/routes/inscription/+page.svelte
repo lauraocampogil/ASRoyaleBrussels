@@ -45,13 +45,25 @@
 		if (!original) return;
 
 		converting = true;
-		const file = await toLightJpeg(original);
-		if (file !== original) {
-			const dt = new DataTransfer();
-			dt.items.add(file);
-			input.files = dt.files;
+		let file = original;
+		try {
+			file = await toLightJpeg(original);
+			if (file !== original) {
+				try {
+					// Absent de certains navigateurs (ex. navigateur intégré d'Instagram) : on garde alors l'original.
+					const dt = new DataTransfer();
+					dt.items.add(file);
+					input.files = dt.files;
+				} catch (err) {
+					console.warn('Remplacement du fichier impossible :', err);
+				}
+			}
+		} catch (err) {
+			console.warn("Préparation de la carte d'identité impossible :", err);
+			file = original;
+		} finally {
+			converting = false;
 		}
-		converting = false;
 
 		const setPreview =
 			side === 'front'
