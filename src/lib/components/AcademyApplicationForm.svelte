@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { onMount } from 'svelte';
 	import { Button } from '$lib/components';
 	import { toLightJpeg, MIN_DIMENSION } from '$lib/imageUpload';
 	import { CLOTHING_SIZES, SOCK_SIZES } from '$lib/dossier';
@@ -18,6 +19,53 @@
 	let photoPreview = $state<string | null>(null);
 	let photoError = $state('');
 	let clientError = $state('');
+
+	// Brouillon : si le navigateur recharge la page (fréquent dans Instagram / TikTok quand la mémoire
+	// est pleine), les réponses déjà saisies sont retrouvées. Les fichiers ne sont pas conservés.
+	const DRAFT_KEY = 'bsa-dossier-draft';
+	let formEl = $state<HTMLFormElement | null>(null);
+
+	function saveDraft() {
+		if (!formEl) return;
+		try {
+			const draft: Record<string, string | string[]> = {};
+			for (const el of Array.from(formEl.elements) as HTMLInputElement[]) {
+				if (!el.name || el.type === 'file' || el.type === 'hidden' || el.name === 'email_confirm') continue;
+				if (el.type === 'radio') {
+					if (el.checked) draft[el.name] = el.value;
+				} else if (el.type === 'checkbox') {
+					draft[el.name] = el.checked ? 'on' : '';
+				} else {
+					draft[el.name] = el.value;
+				}
+			}
+			localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+		} catch {
+			// stockage indisponible : pas grave
+		}
+	}
+
+	onMount(() => {
+		try {
+			const raw = localStorage.getItem(DRAFT_KEY);
+			if (!raw || !formEl) return;
+			const draft = JSON.parse(raw) as Record<string, string>;
+			for (const el of Array.from(formEl.elements) as HTMLInputElement[]) {
+				if (!el.name || !(el.name in draft) || el.type === 'file' || el.type === 'hidden') continue;
+				if (el.type === 'radio') {
+					el.checked = el.value === draft[el.name];
+					if (el.checked) el.dispatchEvent(new Event('change', { bubbles: true }));
+				} else if (el.type === 'checkbox') {
+					el.checked = draft[el.name] === 'on';
+				} else if (!el.value) {
+					el.value = draft[el.name];
+					el.dispatchEvent(new Event('input', { bubbles: true }));
+				}
+			}
+		} catch {
+			// brouillon illisible : on l'ignore
+		}
+	});
 
 	// Remplace le fichier d'un <input> par sa version allégée. Certains navigateurs (ex. navigateur
 	// intégré d'Instagram / Facebook, anciens iPhone) n'ont pas DataTransfer : on garde alors
@@ -137,6 +185,9 @@
 </script>
 
 <form
+	bind:this={formEl}
+	oninput={saveDraft}
+	onchange={saveDraft}
 	method="POST"
 	enctype="multipart/form-data"
 	oninvalidcapture={onInvalid}
@@ -158,6 +209,13 @@
 			if (result.type === 'error') {
 				clientError = 'Une erreur est survenue pendant l\'envoi. Réessaie dans un instant.';
 				return;
+			}
+			if (result.type === 'success') {
+				try {
+					localStorage.removeItem(DRAFT_KEY);
+				} catch {
+					// ignore
+				}
 			}
 			await update({ reset: false });
 		};

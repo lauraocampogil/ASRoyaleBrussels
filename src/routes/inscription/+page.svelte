@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import { Button, AcademyApplicationForm } from '$lib/components';
+	import { Button, AcademyApplicationForm, InAppBrowserNotice } from '$lib/components';
 	import type { ActionData, PageData } from './$types';
 	import { Seo } from '$lib/components';
 	import { toLightJpeg, MIN_DIMENSION } from '$lib/imageUpload';
@@ -131,6 +131,8 @@
 				</p>
 			{/if}
 		</div>
+
+		<InAppBrowserNotice />
 
 		{#if activeTab === 'talent_days' && !acceptedLink}
 		<p
